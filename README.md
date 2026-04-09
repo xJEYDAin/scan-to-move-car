@@ -107,13 +107,16 @@ scan-to-move-car/
 ├── cloudflare/
 │   ├── movecar.js       # Workers 主代码
 │   ├── kv.js            # KV 工具类
-│   └── wrangler.toml    # 配置文件
+│   └── wrangler.toml    # Workers 配置
 ├── public/              # 前端页面
 │   ├── index.html       # 扫码挪车表单
-│   ├── register.html    # 车主注册页
-│   ├── confirm.html     # 确认/拒绝页
+│   ├── register.html    # 车主注册
+│   ├── confirm.html     # 车主确认/拒绝
 │   ├── qr.html          # 二维码生成
-│   └── messages.js      # 推送文案
+│   ├── common.js        # 公共函数
+│   ├── style.css        # 公共样式
+│   ├── messages.js      # 推送文案
+│   └── build.sh         # 构建脚本
 └── README.md
 ```
 
