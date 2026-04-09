@@ -4,11 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>扫码挪车</title>
+<link rel="stylesheet" href="style.css">
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
-  .card { background: #fff; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); padding: 40px 36px; width: 100%; max-width: 420px; position: relative; }
-
   /* 地区限制提示 */
   .region-block { display: none; text-align: center; padding: 40px 20px; }
   .region-block.show { display: block; }
@@ -16,40 +13,12 @@
   .region-block h2 { font-size: 22px; color: #333; margin-bottom: 10px; }
   .region-block p { color: #888; font-size: 14px; line-height: 1.6; }
 
-  .hero { text-align: center; margin-bottom: 32px; }
-  .hero-icon { font-size: 56px; margin-bottom: 12px; }
-  h1 { font-size: 26px; text-align: center; margin-bottom: 8px; color: #1a1a2e; font-weight: 700; }
-  .subtitle { text-align: center; color: #888; font-size: 15px; }
-
-  label { display: block; font-size: 14px; color: #444; margin-bottom: 10px; font-weight: 600; letter-spacing: 0.3px; }
-  select, textarea, input { width: 100%; padding: 13px 16px; border: 1.5px solid #e8e8e8; border-radius: 12px; font-size: 16px; outline: none; transition: all 0.25s; font-family: inherit; }
-  select:focus, textarea:focus, input:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.12); }
-  textarea { resize: none; height: 90px; }
-
-  .msg-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .msg-btn { padding: 10px 8px; border: 2px solid #e8e8e8; border-radius: 10px; background: #fff; font-size: 13px; cursor: pointer; transition: all 0.2s; }
-  .msg-btn:hover { border-color: #667eea; color: #667eea; }
-  .msg-btn.active { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border-color: transparent; }
-
-  .location-btn { width: 100%; padding: 12px; border: 2px solid #667eea; border-radius: 12px; background: #fff; color: #667eea; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-  .location-btn:hover { background: #667eea; color: #fff; }
-  .location-btn.success { background: #4caf50; border-color: #4caf50; color: #fff; }
-  .hint { font-size: 12px; color: #999; margin-top: 6px; }
-  #locHint { font-size: 12px; color: #999; margin-top: 4px; }
-  .form-group { margin-bottom: 20px; }
-
+  /* 场景按钮 */
   .scenarios { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 20px; }
   .scenario-btn { display: flex; align-items: center; justify-content: center; gap: 4px; padding: 11px 4px; border: 2px solid #e8e8e8; border-radius: 14px; background: #fff; cursor: pointer; font-size: 13px; font-weight: 500; color: #555; transition: all 0.22s; }
   .scenario-btn .emoji { font-size: 16px; }
   .scenario-btn:hover { border-color: #667eea; color: #667eea; background: rgba(102,126,234,0.05); }
   .scenario-btn.active { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border-color: transparent; box-shadow: 0 4px 15px rgba(102,126,234,0.35); }
-
-  /* 车牌输入 */
-  .plate-row { display: flex; gap: 3px; align-items: center; }
-  .plate-row select { appearance: none; -webkit-appearance: none; padding: 8px 4px; border: 1.5px solid #e8e8e8; border-radius: 10px; font-size: 15px; font-weight: 600; background: #fff; color: #333; cursor: pointer; text-align: center; outline: none; }
-  .plate-row select:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.12); }
-  .plate-sep { font-size: 18px; color: #667eea; font-weight: 700; padding: 0 2px; }
-  .plate-label { font-size: 14px; color: #444; font-weight: 600; margin-bottom: 8px; display: block; }
 
   /* 紧急程度选择 */
   .urgency-group { display: flex; gap: 8px; margin-bottom: 20px; }
@@ -60,51 +29,22 @@
   .urgency-btn.active-warning { background: #28a745; border-color: #28a745; color: #fff; }
   .urgency-btn input[type="radio"] { display: none; }
 
-  .submit-btn { width: 100%; padding: 16px; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border: none; border-radius: 14px; font-size: 17px; font-weight: 600; cursor: pointer; transition: all 0.25s; letter-spacing: 0.5px; }
-  .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(102,126,234,0.4); }
-  .submit-btn:active { transform: translateY(0); }
-  .submit-btn:disabled { background: #ccc; box-shadow: none; transform: none; cursor: not-allowed; }
-  .msg { text-align: center; margin-top: 16px; font-size: 15px; min-height: 22px; font-weight: 500; }
-  .msg.ok { color: #2ecc71; }
-  .msg.err { color: #e74c3c; }
+  /* 位置按钮 */
+  .location-btn { width: 100%; padding: 12px; border: 2px solid #667eea; border-radius: 12px; background: #fff; color: #667eea; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+  .location-btn:hover { background: #667eea; color: #fff; }
+  .location-btn.success { background: #4caf50; border-color: #4caf50; color: #fff; }
 
-  .char-count { text-align: right; font-size: 12px; color: #aaa; margin-top: 5px; }
-  .char-count.warn { color: #e74c3c; }
+  /* 留言快捷按钮 */
+  .msg-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .msg-btn { padding: 10px 8px; border: 2px solid #e8e8e8; border-radius: 10px; background: #fff; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+  .msg-btn:hover { border-color: #667eea; color: #667eea; }
+  .msg-btn.active { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border-color: transparent; }
 
-  /* Loading 遮罩 */
-  .loading-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.88); border-radius: 20px; display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 10; }
-  .loading-overlay.show { display: flex; }
-  .spinner { width: 44px; height: 44px; border: 4px solid #e8e8ff; border-top-color: #667eea; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 14px; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .loading-text { font-size: 16px; font-weight: 600; color: #555; }
-  .retry-btn { margin-top: 16px; padding: 10px 28px; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; display: none; }
-  .retry-btn.show { display: inline-block; }
+  /* 车牌输入 — 页内特有 */
+  .plate-row select { appearance: none; -webkit-appearance: none; padding: 8px 4px; border: 1.5px solid #e8e8e8; border-radius: 10px; font-size: 15px; font-weight: 600; background: #fff; color: #333; cursor: pointer; text-align: center; outline: none; }
+  .plate-row select:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.12); }
 
-  /* 结果页 */
-  .success-view { text-align: center; display: none; }
-  .success-view .check-icon { font-size: 72px; margin-bottom: 16px; }
-  .success-view h2 { font-size: 24px; color: #1a1a2e; margin-bottom: 10px; font-weight: 700; }
-  .success-view p { color: #888; font-size: 15px; line-height: 1.6; }
-  .back-btn { margin-top: 24px; padding: 12px 32px; background: #f5f5f5; color: #555; border: none; border-radius: 10px; font-size: 15px; cursor: pointer; transition: background 0.2s; }
-  .back-btn:hover { background: #e8e8e8; }
-
-  /* 等待确认页 */
-  .waiting-view { text-align: center; display: none; }
-  .waiting-view .icon { font-size: 72px; margin-bottom: 16px; }
-  .waiting-view h2 { font-size: 22px; color: #1a1a2e; margin-bottom: 10px; font-weight: 700; }
-  .waiting-view p { color: #888; font-size: 15px; line-height: 1.6; }
-  .countdown-ring { width: 100px; height: 100px; margin: 20px auto; position: relative; }
-  .countdown-ring svg { transform: rotate(-90deg); }
-  .countdown-ring circle { fill: none; stroke-width: 8; }
-  .countdown-ring .bg { stroke: #e8e8ff; }
-  .countdown-ring .fg { stroke: #667eea; stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
-  .countdown-number { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; color: #667eea; }
-
-  /* 倒计时圆环 */
-  .countdown-wrapper { display: flex; flex-direction: column; align-items: center; margin: 16px 0; }
-  .countdown-timer { font-size: 48px; font-weight: 800; color: #667eea; font-variant-numeric: tabular-nums; }
-  .countdown-label { font-size: 14px; color: #999; margin-top: 4px; }
-
+  /* 冷却提示 */
   .cooldown-tip { color: #e74c3c; font-size: 13px; margin-top: 12px; }
   .owner-location { background: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 10px; padding: 12px; margin-top: 14px; text-align: left; font-size: 13px; color: #2e7d32; }
   .owner-location a { color: #2e7d32; }
@@ -152,20 +92,14 @@
       <div class="form-group">
         <label>通知紧急程度</label>
         <div class="urgency-group" id="urgencyGroup">
-          <button type="button" class="urgency-btn" data-val="critical" title="堵住出口等紧急情况">
-            🔴 紧急
-          </button>
-          <button type="button" class="urgency-btn active-high" data-val="high" title="影响他人停车">
-            🟡 重要
-          </button>
-          <button type="button" class="urgency-btn" data-val="warning" title="轻微挡道">
-            🟢 警告
-          </button>
+          <button type="button" class="urgency-btn" data-val="critical" title="堵住出口等紧急情况">🔴 紧急</button>
+          <button type="button" class="urgency-btn active-high" data-val="high" title="影响他人停车">🟡 重要</button>
+          <button type="button" class="urgency-btn" data-val="warning" title="轻微挡道">🟢 警告</button>
         </div>
         <input type="hidden" id="urgency" value="high">
       </div>
 
-      <!-- 位置输入（必须） -->
+      <!-- 位置输入 -->
       <div class="form-group" id="locationGroup">
         <label>您的位置（必填，用于告知车主）</label>
         <button type="button" class="location-btn" id="getLocBtn">📍 获取当前位置</button>
@@ -189,7 +123,6 @@
           <input type="text" id="cp8" maxlength="1" style="width:34px;text-align:center;font-size:14px;font-weight:600;padding:8px 2px;border:1.5px solid #d0c8ff;border-radius:8px;outline:none;" inputmode="text">
         </div>
         <p class="hint" id="plateHint">请完整选择车牌号</p>
-
       </div>
 
       <div class="form-group">
@@ -220,21 +153,18 @@
     <div class="icon" id="waitingIcon">⏳</div>
     <h2 id="waitingTitle">等待发送...</h2>
     <p id="waitingDesc">为防止恶意骚扰，需等待 30 秒后才能发送通知</p>
-
     <div class="countdown-wrapper" id="countdownWrapper">
       <div class="countdown-timer" id="countdownTimer">30</div>
       <div class="countdown-label">秒后可发送</div>
     </div>
-
     <p id="waitingTip" style="color:#999;font-size:13px;margin-top:8px;"></p>
-
     <button type="button" class="submit-btn" id="sendAfterCountdownBtn" style="display:none;margin-top:16px;" onclick="doSendAfterCountdown()">🔔 立即通知车主</button>
     <button type="button" class="back-btn" style="margin-top:12px;" onclick="backToForm()">返回修改</button>
   </div>
 
   <!-- 车主已确认视图 -->
   <div class="success-view" id="confirmedView" style="display:none;">
-    <div class="check-icon" style="font-size:72px;">✅</div>
+    <div class="check-icon">✅</div>
     <h2>车主已确认！</h2>
     <p>车主会尽快挪车，请稍候</p>
     <div class="owner-location" id="ownerLocationBox" style="display:none;">
@@ -244,11 +174,12 @@
   </div>
 </div>
 
+<script src="common.js"></script>
 <script>
 const params = new URLSearchParams(window.location.search);
 const scanId = params.get('scan_id');
-const token = params.get('token'); // 兼容旧版 token param
-let ownerToken = token || ''; // 实际用于 API 的 token
+const token = params.get('token');
+let ownerToken = token || '';
 let carLat = 0, carLon = 0;
 let currentPendingId = null;
 let currentUrgency = 'high';
@@ -257,15 +188,10 @@ let savedScenario = '小区';
 
 // ── 车牌选择初始化 ──
 const LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'.split('');
-const DIGITS = '0123456789'.split('');
-const ALPHANUM = LETTERS;
-
 
 (function initPlateSelects() {
-  // cp2: 字母（排除O/I）
   const cp2 = document.getElementById('cp2');
   LETTERS.forEach(l => { const o = document.createElement('option'); o.value = l; o.textContent = l; cp2.appendChild(o); });
-  // cp3-cp8: auto uppercase + auto advance
   ['cp3','cp4','cp5','cp6','cp7','cp8'].forEach((id, idx, arr) => {
     const el = document.getElementById(id);
     el.addEventListener('input', () => {
@@ -279,12 +205,17 @@ const ALPHANUM = LETTERS;
 
 // 车牌提示更新
 function updatePlateHint() {
-  const p = document;
-  const v1 = p.getElementById('cp1').value;
-  const v2 = p.getElementById('cp2').value;
-  const hint = p.getElementById('plateHint');
+  const v1 = document.getElementById('cp1').value;
+  const v2 = document.getElementById('cp2').value;
+  const hint = document.getElementById('plateHint');
   if (v1 && v2) {
-    const plate = v1 + v2 + p.getElementById('cp3').value + p.getElementById('cp4').value + p.getElementById('cp5').value + p.getElementById('cp6').value + p.getElementById('cp7').value + p.getElementById('cp8').value;
+    const plate = v1 + v2
+      + document.getElementById('cp3').value
+      + document.getElementById('cp4').value
+      + document.getElementById('cp5').value
+      + document.getElementById('cp6').value
+      + document.getElementById('cp7').value
+      + document.getElementById('cp8').value;
     hint.textContent = '当前车牌：' + plate;
     hint.style.color = '#667eea';
   } else {
@@ -296,14 +227,6 @@ function updatePlateHint() {
 ['cp1','cp2','cp3','cp4','cp5','cp6','cp7','cp8'].forEach(id => {
   document.getElementById(id).addEventListener('change', updatePlateHint);
 });
-
-function getCarPlate() {
-  const v1 = document.getElementById('cp1').value;
-  const v2 = document.getElementById('cp2').value;
-  if (!v1 || !v2) return '';
-  let plate = v1 + v2 + document.getElementById('cp3').value + document.getElementById('cp4').value + document.getElementById('cp5').value + document.getElementById('cp6').value + document.getElementById('cp7').value + document.getElementById('cp8').value;
-  return plate;
-}
 
 // ── 紧急程度按钮 ──
 document.querySelectorAll('.urgency-btn').forEach(btn => {
@@ -323,28 +246,11 @@ if (!scanId && !token) {
   document.getElementById('msg').className = 'msg err';
   document.getElementById('submitBtn').disabled = true;
 } else {
-  // 优先通过 scan_id 获取车主信息（暴露 scan_id 而非 token）
-  const lookupId = scanId || token;
   const lookupEndpoint = scanId ? `/api/scan/${scanId}` : `/api/qr/${token}`;
   fetch(lookupEndpoint).then(r => r.json()).then(data => {
-    if (data.token) {
-      ownerToken = data.token; // 存储解析出的真实 token
-    }
-    if (data.latitude && data.longitude) {
-      carLat = data.latitude;
-      carLon = data.longitude;
-    }
+    if (data.token) ownerToken = data.token;
+    if (data.latitude && data.longitude) { carLat = data.latitude; carLon = data.longitude; }
   }).catch(() => {});
-}
-
-// Haversine
-function getDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371000;
-  const toRad = d => d * Math.PI / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
 // 留言按钮
@@ -373,7 +279,6 @@ document.getElementById('getLocBtn').addEventListener('click', () => {
   const hint = document.getElementById('locHint');
   btn.disabled = true;
   btn.textContent = '获取中...';
-
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       document.getElementById('userLat').value = pos.coords.latitude;
@@ -413,11 +318,6 @@ function backToForm() {
   document.getElementById('formView').style.display = 'block';
 }
 
-function closeWindow() {
-  // 扫码用户确认后点击返回，显示完成提示即可
-  document.getElementById('confirmedView').innerHTML = '<div class="check-icon" style="font-size:72px;">✅</div><h2>操作完成</h2><p>感谢您的配合</p><p style="margin-top:16px;color:#888;">可以关闭此页面了</p>';
-}
-
 let submitController = null;
 
 function doSubmit() {
@@ -425,18 +325,10 @@ function doSubmit() {
   msg.textContent = '';
   msg.className = 'msg';
 
-  if (!selectedMsg) {
-    msg.textContent = '请选择情况说明';
-    msg.className = 'msg err';
-    return;
-  }
+  if (!selectedMsg) { showErr('请选择情况说明'); return; }
 
   const carPlate = getCarPlate();
-  if (!carPlate) {
-    msg.textContent = '请完整填写车牌号';
-    msg.className = 'msg err';
-    return;
-  }
+  if (!carPlate) { showErr('请完整填写车牌号'); return; }
 
   const userLat = parseFloat(document.getElementById('userLat').value) || 0;
   const userLon = parseFloat(document.getElementById('userLon').value) || 0;
@@ -473,32 +365,24 @@ function doNotify(scenario, urgency, message, userLat, userLon) {
   }).then(data => {
     hideLoading();
     if (data.success) {
-      // 有 pending_id → 无位置，需等待 30 秒
       if (data.pending_id && !userLat) {
         currentPendingId = data.pending_id;
         showWaitingCountdown(data.pending_id);
       } else {
-        // 立即成功
         showSuccessView();
       }
     } else {
-      document.getElementById('msg').textContent = '发送失败：' + (data.message || '请稍后重试');
-      document.getElementById('msg').className = 'msg err';
+      showErr('发送失败：' + (data.message || '请稍后重试'));
     }
   }).catch(err => {
     clearTimeout(timeout);
     hideLoading();
-    if (err.name === 'AbortError') {
-      showTimeoutRetry();
-    } else {
-      document.getElementById('msg').textContent = '网络错误，请稍后重试';
-      document.getElementById('msg').className = 'msg err';
-    }
+    if (err.name === 'AbortError') { showTimeoutRetry(); }
+    else { showErr('网络错误，请稍后重试'); }
   });
 }
 
-// ── 30 秒倒计时等待视图（CF Workers 轮询版）──
-// 流程：POST 创建待发通知 → 轮询 status → 服务端到时自动发送 Bark → 返回终态
+// ── 30 秒倒计时等待视图 ──
 let countdownInterval = null;
 let pendingId = null;
 
@@ -524,33 +408,23 @@ function showWaitingCountdown(nid) {
   tip.textContent = '正在等待...';
 
   if (countdownInterval) clearInterval(countdownInterval);
-
-  // 立即查一次
   pollPendingStatus();
-
-  // 每 2 秒轮询一次
   countdownInterval = setInterval(pollPendingStatus, 2000);
 }
 
 function pollPendingStatus() {
   if (!pendingId) return;
-
   fetch('/api/status/' + pendingId)
     .then(r => r.json())
     .then(data => {
-      // 还在等待中
       if (data.status === 'waiting_confirmation' && data.remaining_seconds !== undefined) {
         document.getElementById('countdownTimer').textContent = data.remaining_seconds;
         document.getElementById('waitingTip').textContent = `还剩 ${data.remaining_seconds} 秒...`;
         return;
       }
-
-      // 服务端已触发发送（终态）
       clearInterval(countdownInterval);
       countdownInterval = null;
-
       if (data.status === 'pending' || data.status === 'waiting_confirmation') {
-        // 发送成功或仍在处理 → 进入车主确认轮询
         document.getElementById('waitingView').style.display = 'block';
         document.getElementById('countdownWrapper').style.display = 'none';
         document.getElementById('waitingIcon').textContent = '🔄';
@@ -560,10 +434,8 @@ function pollPendingStatus() {
       } else if (data.status === 'failed') {
         document.getElementById('waitingView').style.display = 'none';
         document.getElementById('formView').style.display = 'block';
-        document.getElementById('msg').textContent = '通知发送失败，请稍后重试';
-        document.getElementById('msg').className = 'msg err';
+        showErr('通知发送失败，请稍后重试');
       } else {
-        // 其他终态
         document.getElementById('waitingView').style.display = 'none';
         document.getElementById('formView').style.display = 'block';
       }
@@ -571,7 +443,6 @@ function pollPendingStatus() {
     .catch(() => {});
 }
 
-// 轮询车主确认状态
 function pollOwnerConfirmation() {
   if (!pendingId) return;
   const interval2 = setInterval(() => {
@@ -585,8 +456,7 @@ function pollOwnerConfirmation() {
           clearInterval(interval2);
           document.getElementById('waitingView').style.display = 'none';
           document.getElementById('formView').style.display = 'block';
-          document.getElementById('msg').textContent = '车主暂时无法挪车，请谅解';
-          document.getElementById('msg').className = 'msg err';
+          showErr('车主暂时无法挪车，请谅解');
         }
       }).catch(() => {});
   }, 5000);

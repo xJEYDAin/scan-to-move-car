@@ -4,62 +4,32 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>车主注册</title>
+<link rel="stylesheet" href="style.css">
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
-  .card { background: #fff; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); padding: 36px 32px; width: 100%; max-width: 480px; }
-  .hero { text-align: center; margin-bottom: 28px; }
-  .hero-icon { font-size: 48px; margin-bottom: 8px; }
-  h1 { font-size: 24px; text-align: center; margin-bottom: 6px; color: #1a1a2e; font-weight: 700; }
-  .subtitle { text-align: center; color: #888; font-size: 14px; }
-  label { display: block; font-size: 14px; color: #444; margin-bottom: 8px; font-weight: 600; }
-  input { width: 100%; padding: 12px 14px; border: 1.5px solid #e8e8e8; border-radius: 10px; font-size: 16px; outline: none; transition: all 0.25s; font-family: inherit; }
-  input:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.12); }
-  .form-group { margin-bottom: 16px; }
-  .hint { font-size: 12px; color: #999; margin-top: 5px; line-height: 1.5; }
+  .card { padding: 36px 32px; max-width: 480px; }
 
+  /* Bark 指引 */
+  .bark-guide { background: #f8f7ff; border: 1px solid #e0dcff; border-radius: 12px; padding: 14px 16px; margin-bottom: 20px; }
+  .bark-guide-title { font-size: 13px; font-weight: 700; color: #667eea; margin-bottom: 8px; display: flex; align-items: center; gap: 5px; }
+  .bark-guide ol { font-size: 12px; color: #666; padding-left: 18px; line-height: 1.8; }
+  .bark-guide ol a { color: #667eea; text-decoration: none; }
+
+  /* 车牌列表 */
   .plate-section { margin-bottom: 20px; }
   .plate-label { font-size: 14px; color: #444; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
   .plate-label .add-btn { font-size: 13px; background: #f0f0f0; border: none; border-radius: 8px; padding: 4px 12px; cursor: pointer; color: #667eea; font-weight: 600; }
   .plate-list { display: flex; flex-direction: column; gap: 10px; }
   .plate-item { background: #f8f7ff; border: 1.5px solid #e0dcff; border-radius: 12px; padding: 14px 14px 10px; position: relative; }
   .plate-item .remove-btn { position: absolute; top: 8px; right: 10px; background: none; border: none; color: #e74c3c; font-size: 18px; cursor: pointer; line-height: 1; padding: 0; }
-  .plate-row { display: flex; gap: 3px; align-items: center; }
-  select { appearance: none; -webkit-appearance: none; padding: 8px 4px; border: 1.5px solid #d0c8ff; border-radius: 8px; font-size: 15px; font-weight: 600; background: #fff; color: #333; cursor: pointer; text-align: center; outline: none; }
-  select:focus { border-color: #667eea; box-shadow: 0 0 0 2px rgba(102,126,234,0.15); }
-  .plate-sep { font-size: 18px; color: #667eea; font-weight: 700; padding: 0 1px; }
   .plate-hint { font-size: 11px; color: #999; margin-top: 6px; min-height: 14px; }
   .ev-toggle { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 12px; color: #888; cursor: pointer; }
   .ev-toggle input { width: auto; }
 
-  .bark-guide { background: #f8f7ff; border: 1px solid #e0dcff; border-radius: 12px; padding: 14px 16px; margin-bottom: 20px; }
-  .bark-guide-title { font-size: 13px; font-weight: 700; color: #667eea; margin-bottom: 8px; display: flex; align-items: center; gap: 5px; }
-  .bark-guide ol { font-size: 12px; color: #666; padding-left: 18px; line-height: 1.8; }
-  .bark-guide ol a { color: #667eea; text-decoration: none; }
-
-  .submit-btn { width: 100%; padding: 15px; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border: none; border-radius: 14px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.25s; letter-spacing: 0.5px; margin-top: 6px; }
-  .submit-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(102,126,234,0.4); }
-  .submit-btn:disabled { background: #ccc; box-shadow: none; transform: none; cursor: not-allowed; }
-  .msg { text-align: center; margin-top: 14px; font-size: 14px; min-height: 20px; font-weight: 500; }
-  .msg.ok { color: #2ecc71; }
-  .msg.err { color: #e74c3c; }
-
-  .result-view { display: none; text-align: center; }
-  .result-view .check-icon { font-size: 60px; margin-bottom: 12px; }
-  .result-view h2 { font-size: 20px; color: #1a1a2e; margin-bottom: 18px; font-weight: 700; }
-  .token-box { background: #f8f7ff; border: 1.5px solid #e0dcff; border-radius: 12px; padding: 14px; margin-bottom: 16px; text-align: left; }
-  .token-box .label { font-size: 12px; color: #888; margin-bottom: 4px; font-weight: 600; }
-  .token-box .token { font-size: 13px; color: #333; word-break: break-all; font-family: 'Courier New', monospace; background: #fff; padding: 8px 10px; border-radius: 6px; border: 1px solid #e0e0e0; }
-  .result-view .hint-text { font-size: 13px; color: #999; line-height: 1.6; }
-  .result-view .hint-text strong { color: #667eea; }
+  /* 结果页 */
   .divider { border: none; border-top: 1px solid #eee; margin: 16px 0; }
   .qr-preview { margin: 16px auto; }
-  .action-btns { display: flex; gap: 10px; margin-top: 16px; }
-  .action-btn { flex: 1; padding: 12px; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-  .action-btn.primary { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; }
-  .action-btn.secondary { background: #f0f0f0; color: #555; }
-  .action-btn:hover { transform: translateY(-1px); }
-  .reg-again-btn { margin-top: 14px; font-size: 13px; color: #999; background: none; border: none; cursor: pointer; text-decoration: underline; }
+  .hint-text { font-size: 13px; color: #999; line-height: 1.6; }
+  .hint-text strong { color: #667eea; }
 </style>
 </head>
 <body>
@@ -122,16 +92,16 @@
       将二维码打印后放在车窗处<br>
       有人扫码即可一键通知您挪车
     </p>
-    <button class="reg-again-btn" id="regAgainBtn">← 重新注册</button>
+    <button class="back-btn reg-again-btn" id="regAgainBtn">← 重新注册</button>
   </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+<script src="common.js"></script>
 <script>
 const PROVINCES = ['京','津','沪','渝','冀','豫','云','辽','黑','湘','皖','鲁','新','苏','浙','赣','鄂','桂','甘','晋','蒙','陕','吉','闽','贵','粤','青','藏','川','宁','琼'];
-const LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'.split(''); // 排除 O, I
+const LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'.split('');
 const DIGITS = '0123456789'.split('');
-const ALPHANUM = LETTERS; // 第3-7位：数字或字母（排除O/I）
 
 let plateCounter = 0;
 
@@ -141,27 +111,19 @@ function sel(width) {
   return s;
 }
 
-function plateInput(width, maxlen, placeholder) {
+function plateInput(width, maxlen) {
   const i = document.createElement('input');
   i.type = 'text';
   i.maxLength = maxlen;
   i.style.cssText = 'width:' + width + ';text-align:center;font-size:14px;font-weight:600;padding:8px 2px;border:1.5px solid #d0c8ff;border-radius:8px;outline:none;color:#888;';
   i.inputMode = 'text';
   i.autocomplete = 'off';
-  if (placeholder) i.placeholder = placeholder;
-  // Auto uppercase
-  i.addEventListener('input', () => {
-    i.value = i.value.toUpperCase();
-  });
+  i.addEventListener('input', () => { i.value = i.value.toUpperCase(); });
   return i;
 }
 
 function addOptions(s, opts) {
-  opts.forEach(v => {
-    const o = document.createElement('option');
-    o.value = v; o.textContent = v;
-    s.appendChild(o);
-  });
+  opts.forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; s.appendChild(o); });
 }
 
 function buildPlateRow(idx) {
@@ -179,14 +141,13 @@ function buildPlateRow(idx) {
   mid.className = 'plate-sep';
   mid.textContent = '·';
 
-  // 汽油车：省+字母+5位=7位
-  // 第6位（新能源可选）：省+字母+6位=8位（第6位可选填）
-  const ps3 = plateInput('30px', 1, null, null);
-  const ps4 = plateInput('30px', 1, null, ps3);
-  const ps5 = plateInput('30px', 1, null, ps4);
-  const ps6 = plateInput('30px', 1, null, ps5);
-  const ps7 = plateInput('30px', 1, null, ps6);
-  const ps8 = plateInput('30px', 1, '新能源', ps7);
+  const ps3 = plateInput('30px', 1);
+  const ps4 = plateInput('30px', 1);
+  const ps5 = plateInput('30px', 1);
+  const ps6 = plateInput('30px', 1);
+  const ps7 = plateInput('30px', 1);
+  const ps8 = plateInput('30px', 1);
+  ps8.placeholder = '新能源';
 
   row.appendChild(p1);
   row.appendChild(p2);
@@ -204,7 +165,6 @@ function buildPlateRow(idx) {
 function createPlateItem() {
   plateCounter++;
   const idx = plateCounter;
-
   const item = document.createElement('div');
   item.className = 'plate-item';
   item.dataset.idx = idx;
@@ -222,8 +182,6 @@ function createPlateItem() {
     item.appendChild(rm);
   }
 
-
-
   const hint = document.createElement('p');
   hint.className = 'plate-hint';
   hint.textContent = '当前车牌：——';
@@ -240,7 +198,6 @@ function createPlateItem() {
   }
 
   [p1, p2, ps3, ps4, ps5, ps6, ps7, ps8].forEach(s => s.addEventListener('change', updateHint));
-
   return item;
 }
 
@@ -252,12 +209,8 @@ function getAllPlates() {
     const selects = row.querySelectorAll('select');
     const inputs = row.querySelectorAll('input');
     const p1 = selects[0], p2 = selects[1];
-    // ps3-ps8 are either selects or inputs depending on EV toggle
-    const allInputs = row.querySelectorAll('input');
-    let ps3, ps4, ps5, ps6, ps7, ps8;
-    // Find by checking if it's in the row after p2
-    const all = [...selects, ...inputs].sort((a,b) => a.offsetLeft - b.offsetLeft);
-    ps3 = all[2]; ps4 = all[3]; ps5 = all[4]; ps6 = all[5]; ps7 = all[6]; ps8 = all[7];
+    const all = [...selects, ...inputs].sort((a, b) => a.offsetLeft - b.offsetLeft);
+    const ps3 = all[2], ps4 = all[3], ps5 = all[4], ps6 = all[5], ps7 = all[6], ps8 = all[7];
     if (p1.value && p2.value) {
       let plate = p1.value + p2.value + (ps3?.value||'') + (ps4?.value||'') + (ps5?.value||'') + (ps6?.value||'') + (ps7?.value||'');
       if (ps8 && ps8.style.display !== 'none' && ps8.value) plate += ps8.value;
@@ -267,7 +220,6 @@ function getAllPlates() {
   return plates;
 }
 
-// 初始一辆
 document.getElementById('plateList').appendChild(createPlateItem());
 
 document.getElementById('addPlateBtn').addEventListener('click', () => {
@@ -288,8 +240,7 @@ document.getElementById('regForm').addEventListener('submit', async e => {
 
   const plates = getAllPlates();
   if (plates.length === 0) {
-    msg.textContent = '❌ 请至少填写一个完整车牌号';
-    msg.className = 'msg err';
+    showErr('请至少填写一个完整车牌号');
     btn.disabled = false;
     btn.textContent = '注册并生成二维码';
     return;
@@ -316,7 +267,6 @@ document.getElementById('regForm').addEventListener('submit', async e => {
       document.getElementById('tokenDisplay').textContent = savedToken;
       document.getElementById('formView').style.display = 'none';
       document.getElementById('resultView').style.display = 'block';
-      // 使用 scan_id 构建二维码 URL（不暴露真实 token）
       const notifyUrl = `${location.origin}/static/index.html?scan_id=${savedScanId}`;
       const qrDiv = document.getElementById('qrPreview');
       qrDiv.innerHTML = '';
@@ -324,12 +274,10 @@ document.getElementById('regForm').addEventListener('submit', async e => {
         if (!err) { canvas.style.borderRadius = '8px'; qrDiv.appendChild(canvas); }
       });
     } else {
-      msg.textContent = '❌ ' + (data.detail || '注册失败');
-      msg.className = 'msg err';
+      showErr(data.detail || '注册失败');
     }
   } catch {
-    msg.textContent = '❌ 网络错误，请稍后重试';
-    msg.className = 'msg err';
+    showErr('网络错误，请稍后重试');
   }
   btn.disabled = false;
   btn.textContent = '注册并生成二维码';

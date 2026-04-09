@@ -4,31 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>二维码 - 扫码挪车</title>
+<link rel="stylesheet" href="style.css">
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
-  .card { background: #fff; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); padding: 40px 36px; width: 100%; max-width: 440px; text-align: center; }
-  .hero-icon { font-size: 52px; margin-bottom: 10px; }
-  h1 { font-size: 26px; margin-bottom: 8px; color: #1a1a2e; font-weight: 700; }
-  .subtitle { color: #888; font-size: 15px; margin-bottom: 28px; }
-  input { width: 100%; padding: 13px 16px; border: 1.5px solid #e8e8e8; border-radius: 12px; font-size: 16px; outline: none; transition: all 0.25s; font-family: inherit; margin-bottom: 14px; }
-  input:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.12); }
-  .gen-btn { width: 100%; padding: 15px; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border: none; border-radius: 14px; font-size: 17px; font-weight: 600; cursor: pointer; transition: all 0.25s; letter-spacing: 0.5px; margin-bottom: 20px; }
-  .gen-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(102,126,234,0.4); }
-  .msg { font-size: 14px; margin-bottom: 14px; min-height: 20px; }
-  .msg.err { color: #e74c3c; }
+  .card { text-align: center; padding: 40px 36px; }
 
-  /* 二维码区域 */
-  .qr-area { display: none; }
-  .qr-wrapper { background: #fff; border-radius: 16px; padding: 20px; display: inline-block; box-shadow: 0 4px 20px rgba(0,0,0,0.08); margin-bottom: 16px; }
-  .qr-wrapper canvas { border-radius: 8px; display: block; }
-  .owner-badge { display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; padding: 8px 18px; border-radius: 20px; font-size: 14px; font-weight: 600; margin-bottom: 16px; }
-  .action-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-  .action-btn { padding: 11px 22px; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
-  .action-btn.primary { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; }
-  .action-btn.secondary { background: #f0f0f0; color: #555; }
-  .action-btn:hover { transform: translateY(-1px); }
-  .action-btn:active { transform: translateY(0); }
+  /* Token 自动带入 */
+  .token-display { font-size: 12px; color: #999; margin-bottom: 10px; display: none; }
+  .token-display code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-family: 'Courier New', monospace; }
 
   /* 使用说明 */
   .guide { text-align: left; background: #f8f7ff; border: 1px solid #e0dcff; border-radius: 14px; padding: 16px 18px; margin-top: 20px; }
@@ -36,10 +18,6 @@
   .guide ol { font-size: 13px; color: #666; padding-left: 18px; line-height: 1.9; }
   .guide ol li { margin-bottom: 2px; }
   .guide ol li strong { color: #333; }
-
-  /* Token 自动带入 */
-  .token-display { font-size: 12px; color: #999; margin-bottom: 10px; display: none; }
-  .token-display code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-family: 'Courier New', monospace; }
 </style>
 </head>
 <body>
@@ -77,6 +55,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+<script src="common.js"></script>
 <script>
 // 自动从 URL 读取 scan_id（新版）或 token（兼容旧版）
 const urlParams = new URLSearchParams(window.location.search);
@@ -89,7 +68,6 @@ if (autoScanId) {
   document.getElementById('tokenDisplay').innerHTML = 'Scan ID：<code>' + autoScanId + '</code>';
   setTimeout(() => document.getElementById('genBtn').click(), 300);
 } else if (autoToken) {
-  // 兼容旧版 token 链接
   document.getElementById('tokenInput').value = autoToken;
   document.getElementById('tokenDisplay').style.display = 'block';
   document.getElementById('tokenDisplay').innerHTML = 'Token（兼容）：<code>' + autoToken + '</code>';
@@ -102,40 +80,35 @@ let currentUrl = '';
 
 document.getElementById('genBtn').addEventListener('click', async () => {
   const input = document.getElementById('tokenInput').value.trim();
-  const msg = document.getElementById('msg');
+  const msgEl = document.getElementById('msg');
   const qrArea = document.getElementById('qrArea');
-  if (!input) { msg.textContent = '请输入 Scan ID 或 Token'; msg.className = 'msg err'; return; }
-  msg.textContent = '';
-  msg.className = 'msg';
+  if (!input) { showErr('请输入 Scan ID 或 Token'); return; }
+  msgEl.textContent = '';
+  msgEl.className = 'msg';
   try {
-    // 优先用 scan_id 查；fallback 到 token（兼容旧链接）
     let owner;
     let scanId = '';
     try {
       const resp = await fetch(`/api/scan/${input}`);
-      if (resp.ok) {
-        owner = await resp.json();
-        scanId = input;
-      }
+      if (resp.ok) owner = await resp.json();
+      scanId = input;
     } catch (_) { /* fall through */ }
 
     if (!owner) {
       const resp2 = await fetch(`/api/qr/${input}`);
-      if (!resp2.ok) { msg.textContent = '不存在？请前往注册'; msg.className = 'msg err'; return; }
+      if (!resp2.ok) { showErr('不存在？请前往注册'); return; }
       owner = await resp2.json();
-      scanId = ''; // token 模式，QR URL 仍用 token
+      scanId = '';
     }
 
     currentScanId = scanId;
     currentToken = input;
-    // 二维码 URL 始终使用 scan_id（更安全）
     const qrParam = scanId ? `scan_id=${scanId}` : `token=${input}`;
     const notifyUrl = `${location.origin}/static/index.html?${qrParam}`;
     currentUrl = notifyUrl;
 
     const qrDiv = document.getElementById('qrcode');
     qrDiv.innerHTML = '';
-    // Create canvas element first, then render QR
     const canvas = document.createElement('canvas');
     canvas.width = 220;
     canvas.height = 220;
@@ -150,7 +123,7 @@ document.getElementById('genBtn').addEventListener('click', async () => {
 
     qrArea.style.display = 'block';
   } catch {
-    msg.textContent = '网络错误，请稍后重试'; msg.className = 'msg err';
+    showErr('网络错误，请稍后重试');
   }
 });
 

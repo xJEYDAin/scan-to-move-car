@@ -1,0 +1,531 @@
+/**
+ * 公共样式 - 扫码挪车
+ * 所有页面共享的基础样式
+ */
+
+/* ── Reset ── */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Base ── */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+/* ── Card 容器 ── */
+.card {
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  width: 100%;
+  max-width: 440px;
+}
+
+/* ── 表单通用 ── */
+label {
+  display: block;
+  font-size: 14px;
+  color: #444;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+input,
+textarea,
+select {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px solid #e8e8e8;
+  border-radius: 10px;
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.25s, box-shadow 0.25s;
+  font-family: inherit;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.12);
+}
+
+.form-group {
+  margin-bottom: 16px;
+}
+
+.hint {
+  font-size: 12px;
+  color: #999;
+  margin-top: 5px;
+  line-height: 1.5;
+}
+
+/* ── 按钮 ── */
+.submit-btn,
+.gen-btn {
+  width: 100%;
+  padding: 15px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  letter-spacing: 0.5px;
+}
+
+.submit-btn:hover,
+.gen-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+}
+
+.submit-btn:active,
+.gen-btn:active {
+  transform: translateY(0);
+}
+
+.submit-btn:disabled,
+.gen-btn:disabled {
+  background: #ccc;
+  box-shadow: none;
+  transform: none;
+  cursor: not-allowed;
+}
+
+/* ── 消息提示 ── */
+.msg {
+  text-align: center;
+  margin-top: 14px;
+  font-size: 14px;
+  min-height: 20px;
+  font-weight: 500;
+}
+
+.msg.ok {
+  color: #2ecc71;
+}
+
+.msg.err {
+  color: #e74c3c;
+}
+
+/* ── Loading 遮罩 ── */
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.88);
+  border-radius: 20px;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.loading-overlay.show {
+  display: flex;
+}
+
+.spinner {
+  width: 44px;
+  height: 44px;
+  border: 4px solid #e8e8ff;
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-bottom: 14px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-text {
+  font-size: 16px;
+  font-weight: 600;
+  color: #555;
+}
+
+.retry-btn {
+  margin-top: 16px;
+  padding: 10px 28px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: none;
+}
+
+.retry-btn.show {
+  display: inline-block;
+}
+
+/* ── Hero ── */
+.hero {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.hero-icon {
+  font-size: 48px;
+  margin-bottom: 8px;
+}
+
+h1 {
+  font-size: 24px;
+  text-align: center;
+  margin-bottom: 6px;
+  color: #1a1a2e;
+  font-weight: 700;
+}
+
+.subtitle {
+  text-align: center;
+  color: #888;
+  font-size: 14px;
+}
+
+/* ── 车牌输入 ── */
+.plate-row {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+
+.plate-sep {
+  font-size: 18px;
+  color: #667eea;
+  font-weight: 700;
+  padding: 0 1px;
+}
+
+.plate-label {
+  font-size: 14px;
+  color: #444;
+  font-weight: 600;
+  margin-bottom: 8px;
+  display: block;
+}
+
+/* 车牌 selects */
+.plate-row select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 8px 4px;
+  border: 1.5px solid #d0c8ff;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  background: #fff;
+  color: #333;
+  cursor: pointer;
+  text-align: center;
+  outline: none;
+}
+
+.plate-row select:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15);
+}
+
+/* 车牌字母数字输入 */
+.plate-row input[type="text"] {
+  width: 30px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 2px;
+  border: 1.5px solid #d0c8ff;
+  border-radius: 8px;
+  outline: none;
+  color: #333;
+}
+
+/* ── Action 按钮组 ── */
+.action-btns {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  padding: 11px 22px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.action-btn:hover {
+  transform: translateY(-1px);
+}
+
+.action-btn:active {
+  transform: translateY(0);
+}
+
+.action-btn.primary {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+}
+
+.action-btn.secondary {
+  background: #f0f0f0;
+  color: #555;
+}
+
+/* ── 成功 / 结果视图 ── */
+.success-view,
+.result-view {
+  text-align: center;
+}
+
+.success-view .check-icon,
+.result-view .check-icon {
+  font-size: 60px;
+  margin-bottom: 12px;
+}
+
+.success-view h2,
+.result-view h2 {
+  font-size: 20px;
+  color: #1a1a2e;
+  margin-bottom: 10px;
+  font-weight: 700;
+}
+
+.success-view p,
+.result-view p {
+  color: #888;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* ── 返回按钮 ── */
+.back-btn,
+.reg-again-btn {
+  margin-top: 16px;
+  padding: 12px 32px;
+  background: #f5f5f5;
+  color: #555;
+  border: none;
+  border-radius: 10px;
+  font-size: 15px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.back-btn:hover,
+.reg-again-btn:hover {
+  background: #e8e8e8;
+}
+
+/* ── Token 框 ── */
+.token-box {
+  background: #f8f7ff;
+  border: 1.5px solid #e0dcff;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.token-box .label {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.token-box .token {
+  font-size: 13px;
+  color: #333;
+  word-break: break-all;
+  font-family: 'Courier New', monospace;
+  background: #fff;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #e0e0e0;
+}
+
+/* ── 倒计时 ── */
+.countdown-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 16px 0;
+}
+
+.countdown-timer {
+  font-size: 48px;
+  font-weight: 800;
+  color: #667eea;
+  font-variant-numeric: tabular-nums;
+}
+
+.countdown-label {
+  font-size: 14px;
+  color: #999;
+  margin-top: 4px;
+}
+
+/* ── 等待视图 ── */
+.waiting-view .icon {
+  font-size: 72px;
+  margin-bottom: 16px;
+}
+
+.waiting-view h2 {
+  font-size: 22px;
+  color: #1a1a2e;
+  margin-bottom: 10px;
+  font-weight: 700;
+}
+
+.waiting-view p {
+  color: #888;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* ── 二维码区域 ── */
+.qr-area {
+  display: none;
+}
+
+.qr-wrapper {
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  display: inline-block;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  margin-bottom: 16px;
+}
+
+.owner-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+/* ── 确认页 ── */
+.info {
+  background: #f5f5f5;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.info-item:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  color: #888;
+  font-size: 13px;
+}
+
+.info-value {
+  color: #333;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.btn-group {
+  display: flex;
+  gap: 12px;
+}
+
+.btn {
+  flex: 1;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.btn-confirm {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: #fff;
+}
+
+.btn-confirm:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+}
+
+.btn-confirm:disabled {
+  background: #ccc;
+  transform: none;
+  cursor: not-allowed;
+}
+
+.btn-reject {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.btn-reject:hover {
+  background: #e8e8e8;
+}
+
+.status-box {
+  padding: 12px;
+  border-radius: 8px;
+  margin-top: 16px;
+  font-size: 14px;
+}
+
+.status-success {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-error {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.loading {
+  color: #888;
+  font-size: 16px;
+}
