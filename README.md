@@ -123,47 +123,17 @@ wrangler deploy
 ```
 scan-to-move-car/
 ├── cloudflare/
-│   ├── movecar.js       # Workers 主代码（API 路由 + KV 存储）
+│   ├── movecar.js       # Workers 主代码
 │   ├── kv.js            # KV 工具类
-│   └── wrangler.toml    # Workers 配置（CLI 部署用）
+│   └── wrangler.toml    # Workers 配置
 ├── public/              # 静态文件
 │   ├── index.html       # 扫码挪车表单
 │   ├── register.html    # 车主注册
 │   ├── confirm.html     # 车主确认页
-│   ├── qr.html          # 二维码生成
+│   ├── qr.html         # 二维码生成
 │   └── messages.js      # 推送文案模板
 └── README.md            # 本文档
 ```
-
-## API 接口
-
-| 方法 | 路径 | 说明 |
-|------|------|------|
-| POST | `/api/register` | 车主注册 |
-| POST | `/api/notify` | 发送挪车通知 |
-| GET | `/api/status/{id}` | 查询通知状态 |
-| GET | `/api/status/key/{key}` | 通过确认码查询状态 |
-| POST | `/api/confirm/{key}` | 车主确认挪车 |
-| POST | `/api/reject/{key}` | 车主拒绝 |
-| GET | `/api/history/{token}` | 历史记录 |
-| GET | `/api/scan/{scan_id}` | 通过 scan_id 获取车主信息 |
-| GET | `/api/qr/{token}` | 通过 token 获取车主信息 |
-| GET | `/s/c?k=xxx` | 短链接跳转确认页 |
-
-## KV 数据模型
-
-| Key 格式 | 说明 |
-|----------|------|
-| `owner:{token}` | 车主信息（JSON） |
-| `owner_bark:{bark_key}` | Bark Key → Token 索引 |
-| `owner_plate:{plate}` | 车牌 → Token 索引 |
-| `scan:{scan_id}` | 公开 scan_id 映射 |
-| `notif:{id}` | 通知记录（JSON） |
-| `notif_key:{confirmed_key}` | 确认码 → 通知 ID（7 天过期） |
-| `rate:{token}:{date}` | 当日推送计数 |
-| `hist:{token}` | 历史通知列表（最近 50 条） |
-| `counter:notif` | 通知 ID 计数器 |
-| `counter:scan` | Scan ID 计数器 |
 
 ## 隐私说明
 
@@ -174,15 +144,6 @@ scan-to-move-car/
 ## 注意事项
 
 1. **Workers 冷启动**：首次请求可能有几百毫秒延迟
-2. **KV 延迟**：KV 写入有最终一致性
-3. **Bark 服务器**：建议自建，避免推送延迟
-4. **免费额度**：Workers 每月 10 万次请求，KV 读写各 100 万次/天
-5. **自定义域名**：可在 Worker → "Settings" → "Custom Domains" 绑定自己的域名
-
-## 本地开发
-
-```bash
-cd cloudflare
-wrangler dev
-# 访问 http://localhost:8787
-```
+2. **Bark 服务器**：建议自建，避免推送延迟
+3. **免费额度**：Workers 每月 10 万次请求，KV 读写各 100 万次/天
+4. **自定义域名**：可在 Worker → "Settings" → "Custom Domains" 绑定自己的域名
