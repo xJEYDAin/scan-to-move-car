@@ -29,13 +29,9 @@
 
 ---
 
-## 快速部署
+## 部署教程（Cloudflare Dashboard）
 
-### 方式一：Cloudflare 官网部署（推荐）
-
-无需安装任何工具，浏览器即可完成。
-
-#### 第一步：创建 Worker
+### 第一步：创建 Worker
 
 1. 打开 [Cloudflare Workers](https://dash.cloudflare.com/workers)
 2. 点击 **Create Worker**
@@ -44,13 +40,13 @@
 5. 将 `cloudflare/movecar.js` 的内容粘贴进去
 6. 点击 **Save and deploy**
 
-#### 第二步：创建 KV 存储
+### 第二步：创建 KV 存储
 
 1. 左侧菜单点击 **KV**
 2. 点击 **Create a namespace**
 3. 名称填 `SCAN_KV`，点击 **Create**
 
-#### 第三步：绑定 KV 到 Worker
+### 第三步：绑定 KV 到 Worker
 
 1. 进入 Worker → **Settings** → **Bindings**
 2. 点击 **Add binding**
@@ -59,44 +55,24 @@
    - **KV namespace**: 选择刚才创建的 `SCAN_KV`
 4. 点击 **Save**
 
-#### 第四步：配置环境变量
+### 第四步：配置环境变量
 
 1. Worker → **Settings** → **Variables and Secrets**
 2. 点击 **Add variable**，添加：
    - `MAX_PER_DAY` = `20`
-   - `BARK_BASE_URL` = `https://api.day.app`
+   - `BARK_BASE_URL` = `https://api.day.app`（或你的自建 Bark 服务器）
+   - `CONFIRM_BASE_URL` = `https://scan-to-move-car.<你的账户>.pages.dev`（你的 Pages 域名）
 3. 点击 **Save**
 
-#### 第五步：完成
+### 第五步：部署前端
 
-访问：`https://scan-to-move-car.<你的子域名>.workers.dev/static/register.html`
+1. 创建 Cloudflare Pages 项目
+2. 上传 `public/` 目录下的所有文件
+3. 绑定自定义域名（可选）
 
----
+### 第六步：完成
 
-### 方式二：Wrangler CLI 部署
-
-需要 Node.js 环境。
-
-```bash
-# 安装 Wrangler
-npm install -g wrangler
-wrangler login
-
-# 创建 KV 命名空间
-cd cloudflare
-wrangler kv:namespace create "SCAN_KV"
-
-# 将返回的 id 填入 wrangler.toml
-# [[kv_namespaces]]
-# binding = "SCAN_KV"
-# id = "填入此处"
-
-# 配置 Bark 服务器（可选）
-wrangler secret put BARK_BASE_URL
-
-# 部署
-wrangler deploy
-```
+访问：`https://scan-to-move-car.<你的账户>.pages.dev/register.html`
 
 ---
 
@@ -105,9 +81,7 @@ wrangler deploy
 ```
 scan-to-move-car/
 ├── cloudflare/
-│   ├── movecar.js       # Workers 主代码
-│   ├── kv.js            # KV 工具类
-│   └── wrangler.toml    # Workers 配置
+│   └── movecar.js       # Workers 主代码
 ├── public/              # 前端页面
 │   ├── index.html       # 扫码挪车表单
 │   ├── register.html    # 车主注册
@@ -115,8 +89,7 @@ scan-to-move-car/
 │   ├── qr.html          # 二维码生成
 │   ├── common.js        # 公共函数
 │   ├── style.css        # 公共样式
-│   ├── messages.js      # 推送文案
-│   └── build.sh         # 构建脚本
+│   └── messages.js      # 推送文案
 └── README.md
 ```
 
