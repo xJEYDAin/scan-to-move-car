@@ -529,3 +529,8 @@ h1 {
   color: #888;
   font-size: 16px;
 }
+
+/* Hide views by default */
+.success-view, .waiting-view, .result-view, .qr-view {
+  display: none;
+}

@@ -390,7 +390,7 @@ let pendingId = null;
 function showWaitingCountdown(nid) {
   pendingId = nid;
   document.getElementById('formView').style.display = 'none';
-  document.getElementById('successView').style.display = 'none';
+  document.getElementById('confirmedView').style.display = 'none';
   document.getElementById('confirmedView').style.display = 'none';
   document.getElementById('waitingView').style.display = 'block';
   document.getElementById('sendAfterCountdownBtn').style.display = 'none';
@@ -477,7 +477,7 @@ function showSuccessView() {
   document.getElementById('formView').style.display = 'none';
   document.getElementById('waitingView').style.display = 'none';
   document.getElementById('confirmedView').style.display = 'none';
-  document.getElementById('successView').style.display = 'block';
+  document.getElementById('confirmedView').style.display = 'block';
 
   let remaining = 300;
   const tip = document.getElementById('cooldownTip');
@@ -499,7 +499,7 @@ function showSuccessView() {
   }, 1000);
 
   backBtn.onclick = () => {
-    document.getElementById('successView').style.display = 'none';
+    document.getElementById('confirmedView').style.display = 'none';
     document.getElementById('formView').style.display = 'block';
   };
 }
