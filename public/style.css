@@ -1,6 +1,5 @@
 /**
- * 公共样式 - 扫码挪车
- * 所有页面共享的基础样式
+ * 扫码挪车 - 移动端优化样式
  */
 
 /* ── Reset ── */
@@ -11,26 +10,55 @@
 }
 
 /* ── Base ── */
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   min-height: 100vh;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 20px;
+  padding: 16px;
+  padding-top: max(16px, env(safe-area-inset-top));
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
 }
 
 /* ── Card 容器 ── */
 .card {
   background: #fff;
-  border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  border-radius: 24px;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.18);
   width: 100%;
-  max-width: 440px;
+  max-width: 480px;
+  padding: 24px 20px;
+  margin: auto;
+}
+
+/* ── 标题 ── */
+.card-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a1a2e;
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.card-subtitle {
+  font-size: 13px;
+  color: #888;
+  text-align: center;
+  margin-bottom: 20px;
 }
 
 /* ── 表单通用 ── */
+.form-group {
+  margin-bottom: 18px;
+}
+
 label {
   display: block;
   font-size: 14px;
@@ -43,38 +71,40 @@ input,
 textarea,
 select {
   width: 100%;
-  padding: 12px 14px;
-  border: 1.5px solid #e8e8e8;
-  border-radius: 10px;
+  padding: 14px 16px;
+  border: 2px solid #e8e8e8;
+  border-radius: 12px;
   font-size: 16px;
   outline: none;
   transition: border-color 0.25s, box-shadow 0.25s;
   font-family: inherit;
+  background: #fff;
 }
 
 input:focus,
 textarea:focus,
 select:focus {
   border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.12);
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
 }
 
-.form-group {
-  margin-bottom: 16px;
+input::placeholder {
+  color: #bbb;
 }
 
 .hint {
   font-size: 12px;
   color: #999;
-  margin-top: 5px;
+  margin-top: 6px;
   line-height: 1.5;
 }
 
 /* ── 按钮 ── */
 .submit-btn,
-.gen-btn {
+.gen-btn,
+.action-btn {
   width: 100%;
-  padding: 15px;
+  padding: 16px;
   background: linear-gradient(135deg, #667eea, #764ba2);
   color: #fff;
   border: none;
@@ -84,371 +114,331 @@ select:focus {
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
   letter-spacing: 0.5px;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .submit-btn:hover,
-.gen-btn:hover {
+.gen-btn:hover,
+.action-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
 }
 
 .submit-btn:active,
-.gen-btn:active {
+.gen-btn:active,
+.action-btn:active {
   transform: translateY(0);
 }
 
 .submit-btn:disabled,
 .gen-btn:disabled {
   background: #ccc;
-  box-shadow: none;
   transform: none;
+  box-shadow: none;
   cursor: not-allowed;
 }
 
-/* ── 消息提示 ── */
-.msg {
-  text-align: center;
-  margin-top: 14px;
+/* ── 次要按钮 ── */
+.btn-secondary {
+  background: #f5f5f5;
+  color: #666;
+  box-shadow: none;
+}
+
+.btn-secondary:hover {
+  background: #eee;
+  box-shadow: none;
+}
+
+/* ── 位置按钮 ── */
+.location-btn {
+  width: 100%;
+  padding: 14px;
+  border: 2px solid #667eea;
+  border-radius: 12px;
+  background: #fff;
+  color: #667eea;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 50px;
+}
+
+.location-btn:hover {
+  background: #667eea;
+  color: #fff;
+}
+
+.location-btn.success {
+  background: #28a745;
+  border-color: #28a745;
+  color: #fff;
+}
+
+.location-btn.success::before {
+  content: '✅ ';
+}
+
+/* ── 快捷留言按钮 ── */
+.msg-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.msg-btn {
+  padding: 12px 8px;
+  border: 2px solid #e8e8e8;
+  border-radius: 10px;
+  background: #fff;
   font-size: 14px;
-  min-height: 20px;
-  font-weight: 500;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 46px;
 }
 
-.msg.ok {
-  color: #2ecc71;
+.msg-btn:hover {
+  border-color: #667eea;
+  color: #667eea;
 }
 
-.msg.err {
-  color: #e74c3c;
+.msg-btn.active {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  border-color: transparent;
 }
 
-/* ── Loading 遮罩 ── */
-.loading-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(255, 255, 255, 0.88);
-  border-radius: 20px;
-  display: none;
+/* ── 场景选择 ── */
+.scenario-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.scenario-btn {
+  padding: 12px 4px;
+  border: 2px solid #e8e8e8;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 13px;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 48px;
+  display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  z-index: 10;
+  gap: 4px;
 }
 
-.loading-overlay.show {
-  display: flex;
+.scenario-btn:hover {
+  border-color: #667eea;
 }
 
-.spinner {
-  width: 44px;
-  height: 44px;
-  border: 4px solid #e8e8ff;
-  border-top-color: #667eea;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin-bottom: 14px;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.loading-text {
-  font-size: 16px;
-  font-weight: 600;
-  color: #555;
-}
-
-.retry-btn {
-  margin-top: 16px;
-  padding: 10px 28px;
+.scenario-btn.active {
   background: linear-gradient(135deg, #667eea, #764ba2);
   color: #fff;
-  border: none;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  display: none;
+  border-color: transparent;
 }
 
-.retry-btn.show {
-  display: inline-block;
-}
-
-/* ── Hero ── */
-.hero {
-  text-align: center;
-  margin-bottom: 28px;
-}
-
-.hero-icon {
-  font-size: 48px;
-  margin-bottom: 8px;
-}
-
-h1 {
-  font-size: 24px;
-  text-align: center;
-  margin-bottom: 6px;
-  color: #1a1a2e;
-  font-weight: 700;
-}
-
-.subtitle {
-  text-align: center;
-  color: #888;
-  font-size: 14px;
+.scenario-btn .emoji {
+  font-size: 20px;
 }
 
 /* ── 车牌输入 ── */
 .plate-row {
   display: flex;
-  gap: 3px;
+  gap: 8px;
   align-items: center;
 }
 
-.plate-sep {
-  font-size: 18px;
-  color: #667eea;
-  font-weight: 700;
-  padding: 0 1px;
-}
-
-.plate-label {
-  font-size: 14px;
-  color: #444;
-  font-weight: 600;
-  margin-bottom: 8px;
-  display: block;
-}
-
-/* 车牌 selects */
 .plate-row select {
-  appearance: none;
-  -webkit-appearance: none;
-  padding: 8px 4px;
-  border: 1.5px solid #d0c8ff;
-  border-radius: 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 12px 8px;
+  border: 2px solid #e8e8e8;
+  border-radius: 10px;
   font-size: 15px;
   font-weight: 600;
   background: #fff;
   color: #333;
   cursor: pointer;
   text-align: center;
-  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .plate-row select:focus {
   border-color: #667eea;
-  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15);
 }
 
-/* 车牌字母数字输入 */
-.plate-row input[type="text"] {
-  width: 30px;
-  text-align: center;
-  font-size: 14px;
-  font-weight: 600;
-  padding: 8px 2px;
-  border: 1.5px solid #d0c8ff;
-  border-radius: 8px;
-  outline: none;
-  color: #333;
-}
-
-/* ── Action 按钮组 ── */
-.action-btns {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.action-btn {
-  padding: 11px 22px;
-  border: none;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: transform 0.2s;
-}
-
-.action-btn:hover {
-  transform: translateY(-1px);
-}
-
-.action-btn:active {
-  transform: translateY(0);
-}
-
-.action-btn.primary {
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: #fff;
-}
-
-.action-btn.secondary {
-  background: #f0f0f0;
-  color: #555;
-}
-
-/* ── 成功 / 结果视图 ── */
-.success-view, #successView,
-.result-view {
-  text-align: center;
-}
-
-.success-view, #successView .check-icon,
-.result-view .check-icon {
-  font-size: 60px;
-  margin-bottom: 12px;
-}
-
-.success-view, #successView h2,
-.result-view h2 {
-  font-size: 20px;
-  color: #1a1a2e;
-  margin-bottom: 10px;
+.plate-row .plate-dots {
+  color: #667eea;
+  font-size: 18px;
   font-weight: 700;
+  flex-shrink: 0;
 }
 
-.success-view, #successView p,
-.result-view p {
-  color: #888;
-  font-size: 15px;
-  line-height: 1.6;
-}
-
-/* ── 返回按钮 ── */
-.back-btn,
-.reg-again-btn {
-  margin-top: 16px;
-  padding: 12px 32px;
-  background: #f5f5f5;
-  color: #555;
-  border: none;
+/* ── 隐私提示 ── */
+.privacy-note {
+  background: #f8f9fa;
   border-radius: 10px;
-  font-size: 15px;
-  cursor: pointer;
-  transition: background 0.2s;
-}
-
-.back-btn:hover,
-.reg-again-btn:hover {
-  background: #e8e8e8;
-}
-
-/* ── Token 框 ── */
-.token-box {
-  background: #f8f7ff;
-  border: 1.5px solid #e0dcff;
-  border-radius: 12px;
-  padding: 14px;
-  margin-bottom: 16px;
-  text-align: left;
-}
-
-.token-box .label {
+  padding: 12px;
+  margin-top: 16px;
   font-size: 12px;
   color: #888;
-  margin-bottom: 4px;
-  font-weight: 600;
+  text-align: center;
+  line-height: 1.5;
 }
 
-.token-box .token {
-  font-size: 13px;
-  color: #333;
-  word-break: break-all;
-  font-family: 'Courier New', monospace;
-  background: #fff;
-  padding: 8px 10px;
-  border-radius: 6px;
-  border: 1px solid #e0e0e0;
-}
-
-/* ── 倒计时 ── */
-.countdown-wrapper {
+/* ── Loading ── */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.95);
   display: flex;
   flex-direction: column;
   align-items: center;
-  margin: 16px 0;
+  justify-content: center;
+  z-index: 100;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s, visibility 0.3s;
 }
 
-.countdown-timer {
-  font-size: 48px;
-  font-weight: 800;
-  color: #667eea;
-  font-variant-numeric: tabular-nums;
+.loading-overlay.show {
+  opacity: 1;
+  visibility: visible;
 }
 
-.countdown-label {
-  font-size: 14px;
-  color: #999;
-  margin-top: 4px;
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #e8e8e8;
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
 }
 
-/* ── 等待视图 ── */
-.waiting-view, #waitingView .icon {
-  font-size: 72px;
-  margin-bottom: 16px;
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
-.waiting-view, #waitingView h2 {
-  font-size: 22px;
-  color: #1a1a2e;
-  margin-bottom: 10px;
-  font-weight: 700;
-}
-
-.waiting-view, #waitingView p {
-  color: #888;
+.loading-text {
+  margin-top: 16px;
   font-size: 15px;
-  line-height: 1.6;
+  color: #666;
 }
 
-/* ── 二维码区域 ── */
-.qr-area {
+.retry-btn {
+  margin-top: 16px;
+  padding: 12px 24px;
+  background: #667eea;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ── 成功/等待视图 ── */
+.success-view,
+.waiting-view,
+.result-view,
+#waitingView,
+#successView,
+#confirmedView {
   display: none;
 }
 
-.qr-wrapper {
-  background: #fff;
-  border-radius: 16px;
-  padding: 20px;
-  display: inline-block;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+.show-view .form-view {
+  display: none;
+}
+
+.show-view .success-view,
+.show-view .waiting-view,
+.show-view .result-view {
+  display: block;
+}
+
+/* ── 结果卡片 ── */
+.result-card {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.result-emoji {
+  font-size: 64px;
   margin-bottom: 16px;
 }
 
-.owner-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
-  color: #fff;
-  padding: 8px 18px;
-  border-radius: 20px;
+.result-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-bottom: 8px;
+}
+
+.result-message {
   font-size: 14px;
+  color: #666;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+/* ── 等待视图 ── */
+.waiting-content {
+  text-align: center;
+}
+
+.waiting-emoji {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.waiting-title {
+  font-size: 18px;
   font-weight: 600;
-  margin-bottom: 16px;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.waiting-countdown {
+  font-size: 36px;
+  font-weight: 700;
+  color: #667eea;
+  margin: 16px 0;
+}
+
+.waiting-hint {
+  font-size: 13px;
+  color: #888;
 }
 
 /* ── 确认页 ── */
 .info {
-  background: #f5f5f5;
-  border-radius: 12px;
+  background: #f8f9fa;
+  border-radius: 16px;
   padding: 16px;
   margin-bottom: 20px;
-  text-align: left;
 }
 
 .info-item {
   display: flex;
   justify-content: space-between;
-  padding: 8px 0;
+  padding: 10px 0;
   border-bottom: 1px solid #eee;
 }
 
@@ -458,15 +448,16 @@ h1 {
 
 .info-label {
   color: #888;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .info-value {
   color: #333;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
 }
 
+/* ── 操作按钮组 ── */
 .btn-group {
   display: flex;
   gap: 12px;
@@ -474,13 +465,14 @@ h1 {
 
 .btn {
   flex: 1;
-  padding: 14px;
+  padding: 16px;
   border: none;
-  border-radius: 12px;
+  border-radius: 14px;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s;
+  min-height: 52px;
 }
 
 .btn-confirm {
@@ -490,12 +482,13 @@ h1 {
 
 .btn-confirm:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
 }
 
 .btn-confirm:disabled {
   background: #ccc;
   transform: none;
+  box-shadow: none;
   cursor: not-allowed;
 }
 
@@ -505,14 +498,16 @@ h1 {
 }
 
 .btn-reject:hover {
-  background: #e8e8e8;
+  background: #eee;
 }
 
+/* ── 状态框 ── */
 .status-box {
-  padding: 12px;
-  border-radius: 8px;
+  padding: 14px;
+  border-radius: 12px;
   margin-top: 16px;
   font-size: 14px;
+  text-align: center;
 }
 
 .status-success {
@@ -525,12 +520,89 @@ h1 {
   color: #721c24;
 }
 
-.loading {
-  color: #888;
-  font-size: 16px;
+/* ── 车主位置信息 ── */
+.owner-location {
+  background: #e8f5e9;
+  border: 1px solid #c8e6c9;
+  border-radius: 12px;
+  padding: 14px;
+  margin-top: 16px;
+  text-align: left;
+  font-size: 14px;
+  color: #2e7d32;
 }
 
-/* Hide views by default */
-.success-view, #successView, .waiting-view, #waitingView, .result-view, .qr-view {
+.owner-location a {
+  color: #2e7d32;
+  text-decoration: underline;
+}
+
+/* ── 二维码 ── */
+.qr-container {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.qr-container img {
+  max-width: 200px;
+  border-radius: 12px;
+}
+
+.token-display {
+  background: #f5f5f5;
+  border-radius: 10px;
+  padding: 14px;
+  margin: 16px 0;
+  font-family: monospace;
+  font-size: 14px;
+  word-break: break-all;
+}
+
+/* ── 响应式 ── */
+@media (max-width: 480px) {
+  body {
+    padding: 12px;
+  }
+  
+  .card {
+    padding: 20px 16px;
+    border-radius: 20px;
+  }
+  
+  .card-title {
+    font-size: 20px;
+  }
+  
+  .scenario-btns {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .msg-btns {
+    grid-template-columns: 1fr;
+  }
+  
+  .btn-group {
+    flex-direction: column;
+  }
+}
+
+/* ── 安全区域适配 ── */
+@supports (padding: env(safe-area-inset-top)) {
+  .card {
+    padding-left: max(20px, env(safe-area-inset-left));
+    padding-right: max(20px, env(safe-area-inset-right));
+  }
+}
+
+/* ── 隐藏默认视图 ── */
+#formView,
+#resultView,
+#qrView {
+  display: block;
+}
+
+#waitingView,
+#confirmedView,
+#successView {
   display: none;
 }

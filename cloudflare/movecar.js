@@ -428,10 +428,11 @@ async function handleNotify(request, env) {
   const confirmedKey = genConfirmedKey();
   const nid = await store.nextNotifId();
   const plateInfo = car_plate ? `被挡:${car_plate}\n` : "";
+  const locationInfo = (userLat && userLon) ? `位置：https://maps.google.com/?q=${userLat},${userLon}\n` : "";
   const confirmBase = env.CONFIRM_BASE_URL || "https://scan-to-move-car.rolojyssill.pages.dev";
   const confirmUrl = `${confirmBase}/confirm?key=${confirmedKey}`;
   const title = `🔔 ${scenario}`;
-  const text = `${plateInfo}请确认是否能够挪车\n\n确认码: ${confirmedKey}\n链接: ${confirmUrl}`;
+  const text = `${plateInfo}${locationInfo}请确认是否能够挪车\n\n确认码: ${confirmedKey}\n链接: ${confirmUrl}`;
   const ok = await pushBark(owner.bark_key, title, text, urgencyLevel, barkBaseUrl);
 
   const notif = {
@@ -483,10 +484,11 @@ async function handleStatus(id, env) {
       if (owner) {
         const urgencyLevel = SCENARIO_DEFAULT_URGENCY[notif.scenario] || "default";
         const plateInfo = notif.car_plate ? `被挡:${notif.car_plate}\n` : "";
+        const locationInfo = (notif.requester_lat && notif.requester_lon) ? `位置：https://maps.google.com/?q=${notif.requester_lat},${notif.requester_lon}\n` : "";
         const confirmBase = env.CONFIRM_BASE_URL || "https://scan-to-move-car.pages.dev";
         const confirmUrl = `${confirmBase}/confirm?key=${notif.confirmed_key}`;
         const title = `🔔 ${notif.scenario}`;
-        const text = `${plateInfo}请确认是否能够挪车\n\n确认码: ${notif.confirmed_key}\n链接: ${confirmUrl}`;
+        const text = `${plateInfo}${locationInfo}请确认是否能够挪车\n\n确认码: ${notif.confirmed_key}\n链接: ${confirmUrl}`;
         const ok = await pushBark(owner.bark_key, title, text, urgencyLevel, barkBaseUrl);
 
         await store.setNotification(id, {
