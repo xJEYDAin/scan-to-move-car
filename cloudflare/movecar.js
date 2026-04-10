@@ -233,7 +233,7 @@ async function handleRequest(request, env) {
     return handleNotify(request, env);
   }
   if (path.startsWith("/api/status/key/") && request.method === "GET") {
-    const key = path.split("/")[3];
+    const key = path.split("/")[4];
     return handleStatusByKey(key, env);
   }
   if (path.startsWith("/api/status/") && request.method === "GET") {
@@ -241,11 +241,11 @@ async function handleRequest(request, env) {
     return handleStatus(id, env);
   }
   if (path.startsWith("/api/confirm/") && request.method === "POST") {
-    const key = path.split("/")[3];
+    const key = path.split("/")[4];
     return handleConfirm(key, env);
   }
   if (path.startsWith("/api/reject/") && request.method === "POST") {
-    const key = path.split("/")[3];
+    const key = path.split("/")[4];
     return handleReject(key, env);
   }
   if (path === "/api/confirm.html" && request.method === "GET") {
