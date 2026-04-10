@@ -784,8 +784,3 @@ export default {
   async fetch(request, env, ctx) {
     try {
       return await handleRequest(request, env);
-    } catch (e) {
-      return json({ detail: "Internal error: " + e.message }, 500);
-    }
-  },
-};
