@@ -418,8 +418,10 @@ async function handleNotify(request, env) {
   const confirmedKey = genConfirmedKey();
   const nid = await store.nextNotifId();
   const plateInfo = car_plate ? `被挡:${car_plate}\n` : "";
+  const confirmBase = env.CONFIRM_BASE_URL || "https://scan-to-move-car.rolojyssill.pages.dev";
+  const confirmUrl = `${confirmBase}/confirm?key=${confirmedKey}`;
   const title = `🔔 ${scenario}`;
-  const text = `${plateInfo}请确认是否能够挪车`;
+  const text = `${plateInfo}请确认是否能够挪车\n\n确认码: ${confirmedKey}\n链接: ${confirmUrl}`;
   const ok = await pushBark(owner.bark_key, title, text, urgencyLevel, barkBaseUrl);
 
   const notif = {
