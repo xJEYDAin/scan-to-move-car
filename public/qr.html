@@ -57,6 +57,7 @@
 <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
 <script src="common.js"></script>
 <script>
+const API_BASE = "https://scan-to-move-car.rolojyssill.workers.dev";
 // 自动从 URL 读取 scan_id（新版）或 token（兼容旧版）
 const urlParams = new URLSearchParams(window.location.search);
 const autoScanId = urlParams.get('scan_id');
