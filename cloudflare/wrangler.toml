@@ -20,5 +20,9 @@ id = "YOUR_KV_NAMESPACE_ID"
 # Bark 服务器地址，默认 api.day.app
 # 如使用自建 Bark 服务，设置为你的 Bark 服务器地址
 # wrangler secret put BARK_BASE_URL
+#
+# 确认页基础 URL，用于生成短链接重定向和 Bark 通知中的确认链接
+# 默认 https://scan-to-move-car.rolojyssill.pages.dev
+# wrangler secret put CONFIRM_BASE_URL
 [vars]
 MAX_PER_DAY = "20"

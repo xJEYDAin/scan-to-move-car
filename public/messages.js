@@ -118,4 +118,3 @@ const BARK_OPTIONS = {
   '其他':       { sound: 'default',  isArchive: 0 },
 };
 
-module.exports = { MESSAGE_TEMPLATES, getMessage, BARK_OPTIONS };
