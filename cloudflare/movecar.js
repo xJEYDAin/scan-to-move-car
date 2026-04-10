@@ -211,6 +211,12 @@ async function handleRequest(request, env) {
     });
   }
 
+  // IP 地理位置检查（允许中国）
+  const country = request.headers.get("CF-IPCountry");
+  if (country && country !== "CN" && country !== "HK" && country !== "MO" && country !== "TW") {
+    return json({ detail: "仅限中国地区访问" }, 403);
+  }
+
   // 首页 → 静态文件
   if (path === "/" || path === "") {
     return Response.redirect("https://scan-to-move-car.pages.dev/index.html", 302);
