@@ -6,30 +6,17 @@
 
 ## 功能特点
 
-| 功能 | 说明 |
-|------|------|
-| 🚗 车主注册 | 绑定 Bark Key + 车牌号 |
-| 📱 扫码通知 | 无需打电话，扫码即推送 |
-| 🔔 文明推送 | 通过 Bark 发送通知 |
-| ⏱️ 防骚扰 | 无位置时延迟 30 秒发送 |
-| ✅ 双向反馈 | 车主可确认/拒绝 |
-| 🔢 次数限制 | 防止恶意骚扰同一车主（默认每天 20 次） |
+- 🚗 **车主注册** - 绑定 Bark Key + 车牌号
+- 📱 **扫码通知** - 无需打电话，扫码即推送
+- 🔔 **文明推送** - 通过 Bark 发送通知
+- ⏱️ **防骚扰** - 无位置时延迟 30 秒发送
+- ✅ **双向反馈** - 车主可确认/拒绝
+- 🔢 **次数限制** - 防止恶意骚扰（默认每天 20 次/车牌）
+- 🌐 **地域限制** - 默认仅允许中国地区访问
 
 ---
 
-## 每日推送限制
-
-**限制逻辑：** 按车牌号维度计算，同一车牌每天最多推送 N 次。到达上限后返回错误："今日推送次数已达上限"。
-
-**如何修改次数限制：**
-1. 进入 Cloudflare Workers 后台
-2. 打开你的 Worker → Settings → Variables and Secrets
-3. 找到 `MAX_PER_DAY` 变量，修改为想要的值
-4. 重新部署
-
----
-
-## 部署教程（Cloudflare Dashboard）
+## 部署教程
 
 ### 第一步：创建 Worker
 
@@ -45,6 +32,7 @@
 1. 左侧菜单点击 **KV**
 2. 点击 **Create a namespace**
 3. 名称填 `SCAN_KV`，点击 **Create**
+4. 复制返回的 **Namespace ID**（后面会用到）
 
 ### 第三步：绑定 KV 到 Worker
 
@@ -59,9 +47,13 @@
 
 1. Worker → **Settings** → **Variables and Secrets**
 2. 点击 **Add variable**，添加：
-   - `MAX_PER_DAY` = `20`
-   - `BARK_BASE_URL` = `https://api.day.app`（或你的自建 Bark 服务器）
-   - `CONFIRM_BASE_URL` = `https://scan-to-move-car.<你的账户>.pages.dev`（你的 Pages 域名）
+
+| 变量名 | 值 | 说明 |
+|--------|-----|------|
+| `MAX_PER_DAY` | `20` | 每车牌每天最大推送次数 |
+| `BARK_BASE_URL` | `https://api.day.app` | 或你的自建 Bark 服务器 |
+| `CONFIRM_BASE_URL` | `https://你的Pages域名` | 用于生成确认链接 |
+
 3. 点击 **Save**
 
 ### 第五步：部署前端
@@ -70,9 +62,18 @@
 2. 上传 `public/` 目录下的所有文件
 3. 绑定自定义域名（可选）
 
-### 第六步：完成
+### 第六步：修改前端 API 地址
 
-访问：`https://scan-to-move-car.<你的账户>.pages.dev/register.html`
+1. 打开 `public/` 目录下的 HTML 文件
+2. 找到 `API_BASE` 配置，改为你的 Worker URL：
+   ```javascript
+   const API_BASE = 'https://你的Worker域名';
+   ```
+3. 重新部署 Pages
+
+### 第七步：完成
+
+访问：`https://你的Pages域名/register.html`
 
 ---
 
@@ -114,12 +115,14 @@ Bark API（iOS 推送）
 - **冷启动延迟**：首次请求约几百毫秒，后续正常
 - **Bark 服务器**：建议自建，推送更稳定
 - **免费额度**：Workers 每月 10 万次请求，KV 读写各 100 万次/天
+- **IP 地域限制**：默认只允许中国（CN/HK/MO/TW）访问，可在代码中修改
 - **自定义域名**：Worker → Settings → Custom Domains
 
 ---
 
 ## 隐私说明
 
-- 无任何硬编码，Token/Bark Key 全部存储在 KV
-- 对外只暴露 `scan_id`（随机 8 位字符串），不泄露任何敏感信息
+- 无任何硬编码敏感信息
+- Token/Bark Key 全部存储在 KV
+- 对外只暴露 `scan_id`（随机 8 位字符串）
 - 位置可选，不提供位置会有 30 秒延迟
