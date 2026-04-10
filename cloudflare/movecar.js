@@ -222,7 +222,7 @@ async function handleRequest(request, env) {
     const k = url.searchParams.get("k");
     if (!k) return json({ detail: "无效链接" }, 400);
     const confirmBase = env.CONFIRM_BASE_URL || "https://scan-to-move-car.pages.dev";
-    return Response.redirect(confirmBase + "/confirm.html?key=" + encodeURIComponent(k), 302);
+    return Response.redirect(confirmBase + "/confirm?key=" + encodeURIComponent(k), 302);
   }
 
   // API 路由
@@ -344,7 +344,7 @@ async function handleNotify(request, env) {
     const plateInfo = car_plate ? `被挡:${car_plate}\n` : "";
     const confirmBase = env.CONFIRM_BASE_URL || "https://scan-to-move-car.pages.dev";
     const confirmedKey = notif.confirmed_key;
-    const confirmUrl = `${confirmBase}/confirm.html?key=${confirmedKey}`;
+    const confirmUrl = `${confirmBase}/confirm?key=${confirmedKey}`;
     const title = `🔔 ${scenario}`;
     const text = `${plateInfo}请确认是否能够挪车\n\n确认码: ${confirmedKey}\n链接: ${confirmUrl}`;
     const ok = await pushBark(owner.bark_key, title, text, urgencyLevel, barkBaseUrl);
@@ -472,7 +472,7 @@ async function handleStatus(id, env) {
         const urgencyLevel = SCENARIO_DEFAULT_URGENCY[notif.scenario] || "default";
         const plateInfo = notif.car_plate ? `被挡:${notif.car_plate}\n` : "";
         const confirmBase = env.CONFIRM_BASE_URL || "https://scan-to-move-car.pages.dev";
-        const confirmUrl = `${confirmBase}/confirm.html?key=${notif.confirmed_key}`;
+        const confirmUrl = `${confirmBase}/confirm?key=${notif.confirmed_key}`;
         const title = `🔔 ${notif.scenario}`;
         const text = `${plateInfo}请确认是否能够挪车\n\n确认码: ${notif.confirmed_key}\n链接: ${confirmUrl}`;
         const ok = await pushBark(owner.bark_key, title, text, urgencyLevel, barkBaseUrl);
