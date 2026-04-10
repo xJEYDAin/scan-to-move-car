@@ -115,6 +115,10 @@ class KVStore {
     await this.kv.put("notif_key:" + confirmedKey, String(id), { expirationTtl: 7 * 86400 });
   }
 
+  async deleteNotificationKey(confirmedKey) {
+    await this.kv.delete("notif_key:" + confirmedKey);
+  }
+
   async getDailyCount(token) {
     const today = new Date().toISOString().slice(0, 10);
     const val = await this.kv.get("rate:" + token + ":" + today);
@@ -553,6 +557,7 @@ async function handleConfirm(key, env) {
     status: "confirmed",
     confirmed_at: new Date().toISOString(),
   });
+  await store.deleteNotificationKey(key);
 
   // 二次推送告知扫码者
   const owner = await store.getOwner(notif.token);
@@ -589,6 +594,7 @@ async function handleReject(key, env) {
     status: "rejected",
     confirmed_at: new Date().toISOString(),
   });
+  await store.deleteNotificationKey(key);
 
   return json({ ok: true, message: "已拒绝" });
 }
