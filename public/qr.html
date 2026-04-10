@@ -104,7 +104,7 @@ document.getElementById('genBtn').addEventListener('click', async () => {
     currentScanId = scanId;
     currentToken = input;
     const qrParam = scanId ? `scan_id=${scanId}` : `token=${input}`;
-    const notifyUrl = `${location.origin}/static/index.html?${qrParam}`;
+    const notifyUrl = `${location.origin}/index.html?${qrParam}`;
     currentUrl = notifyUrl;
 
     const qrDiv = document.getElementById('qrcode');

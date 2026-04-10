@@ -268,7 +268,7 @@ document.getElementById('regForm').addEventListener('submit', async e => {
       document.getElementById('tokenDisplay').textContent = savedToken;
       document.getElementById('formView').style.display = 'none';
       document.getElementById('resultView').style.display = 'block';
-      const notifyUrl = `${location.origin}/static/index.html?scan_id=${savedScanId}`;
+      const notifyUrl = `${location.origin}/index.html?scan_id=${savedScanId}`;
       const qrDiv = document.getElementById('qrPreview');
       qrDiv.innerHTML = '';
       QRCode.toCanvas(notifyUrl, { width: 160 }, (err, canvas) => {
@@ -294,7 +294,7 @@ document.getElementById('copyTokenBtn').addEventListener('click', () => {
 });
 
 document.getElementById('goQrBtn').addEventListener('click', () => {
-  window.location.href = '/static/qr.html?scan_id=' + encodeURIComponent(savedScanId);
+  window.location.href = '/qr.html?scan_id=' + encodeURIComponent(savedScanId);
 });
 
 document.getElementById('regAgainBtn').addEventListener('click', () => {
