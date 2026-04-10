@@ -319,6 +319,15 @@ function backToForm() {
   document.getElementById('formView').style.display = 'block';
 }
 
+function closeWindow() {
+  // 尝试关闭页面，如果失败则返回首页
+  if (window.opener) {
+    window.close();
+  } else {
+    window.location.href = location.origin + '/index.html';
+  }
+}
+
 let submitController = null;
 
 function doSubmit() {
