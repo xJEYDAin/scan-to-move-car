@@ -232,13 +232,13 @@ async function handleRequest(request, env) {
   if (path === "/api/notify" && request.method === "POST") {
     return handleNotify(request, env);
   }
-  if (path.startsWith("/api/status/") && request.method === "GET") {
-    const id = parseInt(path.split("/")[3]);
-    return handleStatus(id, env);
-  }
   if (path.startsWith("/api/status/key/") && request.method === "GET") {
     const key = path.split("/")[3];
     return handleStatusByKey(key, env);
+  }
+  if (path.startsWith("/api/status/") && request.method === "GET") {
+    const id = parseInt(path.split("/")[3]);
+    return handleStatus(id, env);
   }
   if (path.startsWith("/api/confirm/") && request.method === "POST") {
     const key = path.split("/")[3];
