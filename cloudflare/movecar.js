@@ -209,7 +209,7 @@ async function handleRequest(request, env) {
 
   // 首页 → 静态文件
   if (path === "/" || path === "") {
-    return Response.redirect(url.origin + "/static/index.html", 302);
+    return Response.redirect("https://scan-to-move-car.rolojyssill.pages.dev/index.html", 302);
   }
 
   // favicon
@@ -221,7 +221,7 @@ async function handleRequest(request, env) {
   if (path === "/s/c") {
     const k = url.searchParams.get("k");
     if (!k) return json({ detail: "无效链接" }, 400);
-    return Response.redirect(url.origin + "/static/confirm.html?key=" + encodeURIComponent(k), 302);
+    return Response.redirect("https://scan-to-move-car.rolojyssill.pages.dev/confirm.html?key=" + encodeURIComponent(k), 302);
   }
 
   // API 路由
