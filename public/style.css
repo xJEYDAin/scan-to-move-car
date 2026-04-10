@@ -296,18 +296,18 @@ h1 {
 }
 
 /* ── 成功 / 结果视图 ── */
-.success-view,
+.success-view, #successView,
 .result-view {
   text-align: center;
 }
 
-.success-view .check-icon,
+.success-view, #successView .check-icon,
 .result-view .check-icon {
   font-size: 60px;
   margin-bottom: 12px;
 }
 
-.success-view h2,
+.success-view, #successView h2,
 .result-view h2 {
   font-size: 20px;
   color: #1a1a2e;
@@ -315,7 +315,7 @@ h1 {
   font-weight: 700;
 }
 
-.success-view p,
+.success-view, #successView p,
 .result-view p {
   color: #888;
   font-size: 15px;
@@ -391,19 +391,19 @@ h1 {
 }
 
 /* ── 等待视图 ── */
-.waiting-view .icon {
+.waiting-view, #waitingView .icon {
   font-size: 72px;
   margin-bottom: 16px;
 }
 
-.waiting-view h2 {
+.waiting-view, #waitingView h2 {
   font-size: 22px;
   color: #1a1a2e;
   margin-bottom: 10px;
   font-weight: 700;
 }
 
-.waiting-view p {
+.waiting-view, #waitingView p {
   color: #888;
   font-size: 15px;
   line-height: 1.6;
@@ -531,6 +531,6 @@ h1 {
 }
 
 /* Hide views by default */
-.success-view, .waiting-view, .result-view, .qr-view {
+.success-view, #successView, .waiting-view, #waitingView, .result-view, .qr-view {
   display: none;
 }
