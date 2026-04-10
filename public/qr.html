@@ -89,13 +89,13 @@ document.getElementById('genBtn').addEventListener('click', async () => {
     let owner;
     let scanId = '';
     try {
-      const resp = await fetch(`/api/scan/${input}`);
+      const resp = await fetch(API_BASE + `/api/scan/${input}`);
       if (resp.ok) owner = await resp.json();
       scanId = input;
     } catch (_) { /* fall through */ }
 
     if (!owner) {
-      const resp2 = await fetch(`/api/qr/${input}`);
+      const resp2 = await fetch(API_BASE + `/api/qr/${input}`);
       if (!resp2.ok) { showErr('不存在？请前往注册'); return; }
       owner = await resp2.json();
       scanId = '';

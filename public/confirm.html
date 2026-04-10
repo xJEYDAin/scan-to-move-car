@@ -71,7 +71,7 @@ if (!key) {
 
 async function loadConfirmPage(key) {
   try {
-    const resp = await fetch('/api/status/key/' + encodeURIComponent(key));
+    const resp = await fetch(API_BASE + '/api/status/key/' + encodeURIComponent(key));
     if (!resp.ok) {
       document.getElementById('loading').style.display = 'none';
       document.getElementById('error').style.display = 'block';
@@ -106,7 +106,7 @@ async function doConfirm() {
   btn.disabled = true;
   btn.textContent = '处理中...';
   try {
-    const resp = await fetch('/api/confirm/' + encodeURIComponent(key), {
+    const resp = await fetch(API_BASE + '/api/confirm/' + encodeURIComponent(key), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
     });
@@ -131,7 +131,7 @@ async function doReject() {
   btn.disabled = true;
   btn.textContent = '处理中...';
   try {
-    const resp = await fetch('/api/reject/' + encodeURIComponent(key), {
+    const resp = await fetch(API_BASE + '/api/reject/' + encodeURIComponent(key), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
     });

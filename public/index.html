@@ -247,7 +247,7 @@ if (!scanId && !token) {
   document.getElementById('submitBtn').disabled = true;
 } else {
   const lookupEndpoint = scanId ? `/api/scan/${scanId}` : `/api/qr/${token}`;
-  fetch(lookupEndpoint).then(r => r.json()).then(data => {
+  fetch(API_BASE + lookupEndpoint).then(r => r.json()).then(data => {
     if (data.token) ownerToken = data.token;
     if (data.latitude && data.longitude) { carLat = data.latitude; carLon = data.longitude; }
   }).catch(() => {});
@@ -346,7 +346,7 @@ function doNotify(scenario, urgency, message, userLat, userLon) {
     showTimeoutRetry();
   }, 15000);
 
-  fetch('/api/notify', {
+  fetch(API_BASE + '/api/notify', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -414,7 +414,7 @@ function showWaitingCountdown(nid) {
 
 function pollPendingStatus() {
   if (!pendingId) return;
-  fetch('/api/status/' + pendingId)
+  fetch(API_BASE + '/api/status/' + pendingId)
     .then(r => r.json())
     .then(data => {
       if (data.status === 'waiting_confirmation' && data.remaining_seconds !== undefined) {
@@ -446,7 +446,7 @@ function pollPendingStatus() {
 function pollOwnerConfirmation() {
   if (!pendingId) return;
   const interval2 = setInterval(() => {
-    fetch('/api/status/' + pendingId)
+    fetch(API_BASE + '/api/status/' + pendingId)
       .then(r => r.json())
       .then(data => {
         if (data.status === 'confirmed') {
