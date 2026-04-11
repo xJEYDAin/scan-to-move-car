@@ -64,6 +64,22 @@ async function pushBark(barkKey, title, body, urgency = "default", barkBaseUrl =
   return false;
 }
 
+// 地理编码：坐标转地址（使用高德地图）
+async function geocode(lat, lon, amapKey) {
+  if (!lat || !lon || !amapKey) return null;
+  try {
+    const url = `https://restapi.amap.com/v3/geocode/regeo?key=${amapKey}&location=${lon},${lat}&extensions=base`;
+    const resp = await fetch(url, { cf: { cacheTtl: 3600 } }); // 缓存1小时
+    const data = await resp.json();
+    if (data && data.status === "1" && data.regeocode) {
+      return data.regeocode.formatted_address; // 如："广东省深圳市南山区xxx"
+    }
+  } catch (e) {
+    console.error("Geocode error:", e);
+  }
+  return null;
+}
+
 // ─────────────────────────────────────────────
 // KV 存储封装
 // ─────────────────────────────────────────────
