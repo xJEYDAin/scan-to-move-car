@@ -235,7 +235,7 @@ async function handleRequest(request, env) {
 
   // 首页 → 静态文件
   if (path === "/" || path === "") {
-    return Response.redirect("https://scan-to-move-car.pages.dev/index.html", 302);
+    return Response.redirect("YOUR_PAGES_DOMAIN/index.html", 302);
   }
 
   // favicon
@@ -247,7 +247,7 @@ async function handleRequest(request, env) {
   if (path === "/s/c") {
     const k = url.searchParams.get("k");
     if (!k) return json({ detail: "无效链接" }, 400);
-    const confirmBase = env.CONFIRM_BASE_URL || "https://scan-to-move-car.pages.dev";
+    const confirmBase = env.CONFIRM_BASE_URL || "YOUR_PAGES_DOMAIN";
     return Response.redirect(confirmBase + "/confirm?key=" + encodeURIComponent(k), 302);
   }
 
@@ -368,7 +368,7 @@ async function handleNotify(request, env) {
 
     const urgencyLevel = urgency || SCENARIO_DEFAULT_URGENCY[scenario] || "default";
     const plateInfo = car_plate ? `被挡:${car_plate}\n` : "";
-    const confirmBase = env.CONFIRM_BASE_URL || "https://scan-to-move-car.pages.dev";
+    const confirmBase = env.CONFIRM_BASE_URL || "YOUR_PAGES_DOMAIN";
     const confirmedKey = notif.confirmed_key;
     const confirmUrl = `${confirmBase}/confirm?key=${confirmedKey}`;
     const title = `🔔 ${scenario}`;
@@ -461,7 +461,7 @@ async function handleNotify(request, env) {
     }
   }
   
-  const confirmBase = env.CONFIRM_BASE_URL || "https://scan-to-move-car.rolojyssill.pages.dev";
+  const confirmBase = env.CONFIRM_BASE_URL || "YOUR_PAGES_DOMAIN";
   const confirmUrl = `${confirmBase}/confirm?key=${confirmedKey}`;
   const title = `🔔 ${scenario}`;
   const text = `${plateInfo}${locationInfo}请确认是否能够挪车\n\n确认码: ${confirmedKey}\n链接: ${confirmUrl}`;
@@ -530,7 +530,7 @@ async function handleStatus(id, env) {
             locationInfo = `位置：${notif.requester_lat},${notif.requester_lon}\n`;
           }
         }
-        const confirmBase = env.CONFIRM_BASE_URL || "https://scan-to-move-car.pages.dev";
+        const confirmBase = env.CONFIRM_BASE_URL || "YOUR_PAGES_DOMAIN";
         const confirmUrl = `${confirmBase}/confirm?key=${notif.confirmed_key}`;
         const title = `🔔 ${notif.scenario}`;
         const text = `${plateInfo}${locationInfo}请确认是否能够挪车\n\n确认码: ${notif.confirmed_key}\n链接: ${confirmUrl}`;
