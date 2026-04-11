@@ -18,10 +18,6 @@
 
 ---
 
-
-
----
-
 ## 部署教程
 
 ### 第一步：创建 Worker
@@ -38,7 +34,6 @@
 1. 左侧菜单点击 **KV**
 2. 点击 **Create a namespace**
 3. 名称填 `SCAN_KV`，点击 **Create**
-4. 复制返回的 **Namespace ID**（后面会用到）
 
 ### 第三步：绑定 KV 到 Worker
 
@@ -72,10 +67,7 @@
 ### 第六步：修改前端 API 地址
 
 1. 打开 `public/` 目录下的 HTML 文件
-2. 找到 `API_BASE` 配置，改为你的 Worker URL：
-   ```javascript
-   const API_BASE = 'https://你的Worker域名';
-   ```
+2. 找到 `API_BASE` 配置，改为你的 Worker URL
 3. 重新部署 Pages
 
 ### 第七步：完成
@@ -86,11 +78,36 @@
 
 ## 目录结构
 
+```
+scan-to-move-car/
+├── cloudflare/
+│   └── movecar.js       # Workers 主代码
+├── public/              # 前端页面
+│   ├── index.html       # 扫码挪车表单
+│   ├── register.html    # 车主注册
+│   ├── confirm.html     # 车主确认/拒绝
+│   ├── qr.html          # 二维码生成
+│   ├── common.js        # 公共函数
+│   ├── style.css        # 公共样式
+│   └── messages.js      # 推送文案
+└── README.md
+```
 
 ---
 
 ## 技术架构
 
+```
+用户扫码 → Cloudflare Workers
+                ↓
+        获取 GPS 坐标
+                ↓
+        调用高德地图 API（获取文字地址）
+                ↓
+        Workers KV（存储数据）
+                ↓
+        Bark API（iOS 推送，包含地址信息）
+```
 
 ---
 
@@ -111,8 +128,3 @@
 - Token/Bark Key 全部存储在 KV
 - 对外只暴露 `scan_id`（随机 8 位字符串）
 - 位置可选，不提供位置会有 30 秒延迟
-
----
-
-## 技术架构
-
