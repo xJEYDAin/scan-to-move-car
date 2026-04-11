@@ -428,7 +428,23 @@ async function handleNotify(request, env) {
   const confirmedKey = genConfirmedKey();
   const nid = await store.nextNotifId();
   const plateInfo = car_plate ? `被挡:${car_plate}\n` : "";
-  const locationInfo = (userLat && userLon) ? `位置：https://maps.google.com/?q=${userLat},${userLon}\n` : "";
+  
+  // 尝试获取地址
+  let locationInfo = "";
+  if (userLat && userLon) {
+    const amapKey = env.AMAP_KEY;
+    if (amapKey) {
+      const address = await geocode(userLat, userLon, amapKey);
+      if (address) {
+        locationInfo = `位置：${address}\n`;
+      } else {
+        locationInfo = `位置：${userLat},${userLon}\n`;
+      }
+    } else {
+      locationInfo = `位置：${userLat},${userLon}\n`;
+    }
+  }
+  
   const confirmBase = env.CONFIRM_BASE_URL || "https://scan-to-move-car.rolojyssill.pages.dev";
   const confirmUrl = `${confirmBase}/confirm?key=${confirmedKey}`;
   const title = `🔔 ${scenario}`;
@@ -484,7 +500,20 @@ async function handleStatus(id, env) {
       if (owner) {
         const urgencyLevel = SCENARIO_DEFAULT_URGENCY[notif.scenario] || "default";
         const plateInfo = notif.car_plate ? `被挡:${notif.car_plate}\n` : "";
-        const locationInfo = (notif.requester_lat && notif.requester_lon) ? `位置：https://maps.google.com/?q=${notif.requester_lat},${notif.requester_lon}\n` : "";
+        let locationInfo = "";
+        if (notif.requester_lat && notif.requester_lon) {
+          const amapKey = env.AMAP_KEY;
+          if (amapKey) {
+            const address = await geocode(notif.requester_lat, notif.requester_lon, amapKey);
+            if (address) {
+              locationInfo = `位置：${address}\n`;
+            } else {
+              locationInfo = `位置：${notif.requester_lat},${notif.requester_lon}\n`;
+            }
+          } else {
+            locationInfo = `位置：${notif.requester_lat},${notif.requester_lon}\n`;
+          }
+        }
         const confirmBase = env.CONFIRM_BASE_URL || "https://scan-to-move-car.pages.dev";
         const confirmUrl = `${confirmBase}/confirm?key=${notif.confirmed_key}`;
         const title = `🔔 ${notif.scenario}`;
