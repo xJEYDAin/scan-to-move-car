@@ -136,6 +136,8 @@ Cloudflare Workers
   ↓
 Workers KV（存储数据）
   ↓
+获取 GPS → 高德地图（地理编码）
+  ↓
 Bark API（iOS 推送）
   ↓
 高德地图（地理编码，可选）
@@ -160,3 +162,19 @@ Bark API（iOS 推送）
 - Token/Bark Key 全部存储在 KV
 - 对外只暴露 `scan_id`（随机 8 位字符串）
 - 位置可选，不提供位置会有 30 秒延迟
+
+---
+
+## 技术架构
+
+```
+用户扫码 → Cloudflare Workers
+                ↓
+        获取 GPS 坐标
+                ↓
+        调用高德地图 API（获取文字地址）
+                ↓
+        Workers KV（存储数据）
+                ↓
+        Bark API（iOS 推送，包含地址信息）
+```
