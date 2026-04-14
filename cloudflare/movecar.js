@@ -7,13 +7,20 @@
  *   # 将返回的 id 填入 wrangler.toml 的 [[kv_namespaces]] id 字段
  *   wrangler secret put BARK_BASE_URL   # 可选，默认 api.day.app
  *   wrangler deploy
+ *
+ * 注意：KVStore 已移至 kv.js，本文件统一 import 使用。
  */
+
+import { KVStore } from './kv.js';
 
 // ─────────────────────────────────────────────
 // 常量
 // ─────────────────────────────────────────────
 const MAX_PER_DAY = 20;
 const NO_LOCATION_DELAY_MS = 30_000; // 30 秒延迟防骚扰
+const VALID_SCENARIOS = new Set([
+  "小区","商场","路边","停车场出口","地下车库","医院/学校","景区","加油站","其他"
+]);
 const SOUNDS = {
   critical:  { sound: "alarm",       icon: "🔴" },
   high:      { sound: "anticipate",  icon: "🟡" },
@@ -59,8 +66,12 @@ async function pushBark(barkKey, title, body, urgency = "default", barkBaseUrl =
       } catch {
         return true;
       }
+    } else {
+      console.error(`Bark push failed: HTTP ${resp.status} for key ${deviceKey.slice(0, 8)}`);
     }
-  } catch (_) {}
+  } catch (e) {
+    console.error(`Bark push error: ${e.message} for key ${deviceKey.slice(0, 8)}, url: ${url}`);
+  }
   return false;
 }
 
@@ -78,96 +89,6 @@ async function geocode(lat, lon, amapKey) {
     console.error("Geocode error:", e);
   }
   return null;
-}
-
-// ─────────────────────────────────────────────
-// KV 存储封装
-// ─────────────────────────────────────────────
-class KVStore {
-  constructor(kv) { this.kv = kv; }
-
-  async getOwner(token) {
-    const raw = await this.kv.get("owner:" + token);
-    return raw ? JSON.parse(raw) : null;
-  }
-  async setOwner(token, owner) {
-    await this.kv.put("owner:" + token, JSON.stringify(owner));
-  }
-  async getOwnerByBarkKey(barkKey) {
-    const token = await this.kv.get("owner_bark:" + barkKey);
-    return token ? this.getOwner(token) : null;
-  }
-  async setOwnerBarkKey(barkKey, token) {
-    await this.kv.put("owner_bark:" + barkKey, token);
-  }
-  async getOwnerByPlate(plate) {
-    const token = await this.kv.get("owner_plate:" + plate);
-    return token ? this.getOwner(token) : null;
-  }
-  async setOwnerPlate(plate, token) {
-    await this.kv.put("owner_plate:" + plate, token);
-  }
-
-  async getScan(scanId) {
-    const raw = await this.kv.get("scan:" + scanId);
-    return raw ? JSON.parse(raw) : null;
-  }
-  async setScan(scanId, data) {
-    await this.kv.put("scan:" + scanId, JSON.stringify(data));
-  }
-
-  async getNotification(id) {
-    const raw = await this.kv.get("notif:" + id);
-    return raw ? JSON.parse(raw) : null;
-  }
-  async setNotification(id, data) {
-    await this.kv.put("notif:" + id, JSON.stringify(data));
-  }
-  async getNotificationByKey(confirmedKey) {
-    const id = await this.kv.get("notif_key:" + confirmedKey);
-    return id ? this.getNotification(id) : null;
-  }
-  async setNotificationKey(confirmedKey, id) {
-    await this.kv.put("notif_key:" + confirmedKey, String(id), { expirationTtl: 7 * 86400 });
-  }
-
-  async deleteNotificationKey(confirmedKey) {
-    await this.kv.delete("notif_key:" + confirmedKey);
-  }
-
-  async getDailyCount(token) {
-    const today = new Date().toISOString().slice(0, 10);
-    const val = await this.kv.get("rate:" + token + ":" + today);
-    return val ? parseInt(val) : 0;
-  }
-  async incrDailyCount(token) {
-    const today = new Date().toISOString().slice(0, 10);
-    const key = "rate:" + token + ":" + today;
-    const val = await this.kv.get(key);
-    const cnt = val ? parseInt(val) + 1 : 1;
-    await this.kv.put(key, String(cnt));
-    return cnt;
-  }
-
-  async appendHistory(token, notif) {
-    const key = "hist:" + token;
-    const raw = await this.kv.get(key);
-    const list = raw ? JSON.parse(raw) : [];
-    list.unshift(notif);
-    if (list.length > 50) list.splice(50);
-    await this.kv.put(key, JSON.stringify(list));
-  }
-  async getHistory(token) {
-    const raw = await this.kv.get("hist:" + token);
-    return raw ? JSON.parse(raw) : [];
-  }
-
-  async nextNotifId() {
-    const val = await this.kv.get("counter:notif");
-    const next = val ? parseInt(val) + 1 : 1;
-    await this.kv.put("counter:notif", String(next));
-    return next;
-  }
 }
 
 // ─────────────────────────────────────────────
@@ -199,14 +120,61 @@ async function readBody(request) {
   try { return JSON.parse(text); } catch { return {}; }
 }
 
-function json(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      "Access-Control-Allow-Origin": "*",
-    },
-  });
+// HTML 转义（防止 XSS）
+function escapeHtml(str) {
+  if (str == null) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+// 构建前端确认页 URL（统一处理域名）
+function buildConfirmUrl(env, path = "confirm") {
+  const domain = env.CONFIRM_BASE_URL || env.PAGES_DOMAIN || "";
+  const base = domain.replace(/\/+$/, "");
+  return (base ? base + "/" : "") + path;
+}
+
+// 允许的前端域名列表（逗号分隔，从环境变量读取）
+function getAllowedOrigins(env) {
+  const val = env.ALLOWED_ORIGINS || "";
+  if (!val) return null;
+  return val.split(",").map(s => s.trim()).filter(Boolean);
+}
+
+function getOrigin(request, env) {
+  const origin = request.headers.get("Origin");
+  if (!origin) return null;
+  const allowed = getAllowedOrigins(env);
+  if (!allowed) return origin; // 未配置时保持向后兼容
+  return allowed.includes(origin) ? origin : null;
+}
+
+function json(data, status = 200, request = null, env = null) {
+  const headers = {
+    "Content-Type": "application/json; charset=utf-8",
+  };
+  if (request && env) {
+    const origin = getOrigin(request, env);
+    if (origin) headers["Access-Control-Allow-Origin"] = origin;
+  } else {
+    // 降级：保持向后兼容（仅在无法获取 Origin 时使用）
+    headers["Access-Control-Allow-Origin"] = "*";
+  }
+  return new Response(JSON.stringify(data), { status, headers });
+}
+
+function corsResponse(request, env) {
+  const origin = getOrigin(request, env);
+  const headers = {
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+  };
+  if (origin) headers["Access-Control-Allow-Origin"] = origin;
+  return new Response(null, { headers });
 }
 
 // ─────────────────────────────────────────────
@@ -218,24 +186,20 @@ async function handleRequest(request, env) {
 
   // CORS 预检
   if (request.method === "OPTIONS") {
-    return new Response(null, {
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-      },
-    });
+    return corsResponse(request, env);
   }
 
   // IP 地理位置检查（允许中国）
   const country = request.headers.get("CF-IPCountry");
   if (country && country !== "CN" && country !== "HK" && country !== "MO" && country !== "TW") {
-    return json({ detail: "仅限中国地区访问" }, 403);
+    return json({ detail: "仅限中国地区访问" }, 403, request, env);
   }
 
   // 首页 → 静态文件
   if (path === "/" || path === "") {
-    return Response.redirect("YOUR_PAGES_DOMAIN/index.html", 302);
+    const pagesDomain = env.CONFIRM_BASE_URL || env.PAGES_DOMAIN || "";
+    const base = pagesDomain.replace(/\/+$/, ""); // 去掉末尾斜杠
+    return Response.redirect((base ? base + "/" : "") + "index.html", 302);
   }
 
   // favicon
@@ -246,9 +210,10 @@ async function handleRequest(request, env) {
   // 短链接 /s/c?k=xxx
   if (path === "/s/c") {
     const k = url.searchParams.get("k");
-    if (!k) return json({ detail: "无效链接" }, 400);
-    const confirmBase = env.CONFIRM_BASE_URL || "YOUR_PAGES_DOMAIN";
-    return Response.redirect(confirmBase + "/confirm?key=" + encodeURIComponent(k), 302);
+    if (!k) return json({ detail: "无效链接" }, 400, request, env);
+    const pagesDomain = env.CONFIRM_BASE_URL || env.PAGES_DOMAIN || "";
+    const base = pagesDomain.replace(/\/+$/, "");
+    return Response.redirect((base ? base + "/" : "") + "confirm?key=" + encodeURIComponent(k), 302);
   }
 
   // API 路由
@@ -290,7 +255,7 @@ async function handleRequest(request, env) {
     return handleQr(token, env);
   }
 
-  return json({ detail: "Not Found" }, 404);
+  return json({ detail: "Not Found" }, 404, request, env);
 }
 
 // ─────────────────────────────────────────────
@@ -301,22 +266,22 @@ async function handleRegister(request, env) {
   const { name, bark_key, license_plates = [] } = body;
 
   if (!name || !bark_key) {
-    return json({ detail: "name, bark_key required" }, 400);
+    return json({ detail: "name, bark_key required" }, 400, request, env);
   }
   if (!license_plates || license_plates.length === 0) {
-    return json({ detail: "license_plates required（请至少填写一个车牌号）" }, 400);
+    return json({ detail: "license_plates required（请至少填写一个车牌号）" }, 400, request, env);
   }
 
   const store = new KVStore(env.SCAN_KV);
 
   const existing = await store.getOwnerByBarkKey(bark_key);
   if (existing) {
-    return json({ detail: "该 Bark Key 已注册，请使用原有 Token" }, 400);
+    return json({ detail: "该 Bark Key 已注册，请使用原有 Token" }, 400, request, env);
   }
   for (const plate of license_plates) {
     const owner = await store.getOwnerByPlate(plate);
     if (owner) {
-      return json({ detail: `车牌 ${plate} 已注册，请使用原有 Token` }, 400);
+      return json({ detail: `车牌 ${plate} 已注册，请使用原有 Token` }, 400, request, env);
     }
   }
 
@@ -334,7 +299,7 @@ async function handleRegister(request, env) {
   const scan = { scan_id: scanId, owner_token: token, active: true, created_at: now };
   await store.setScan(scanId, scan);
 
-  return json({ token, name, scan_id: scanId, message: "注册成功" });
+  return json({ token, name, scan_id: scanId, message: "注册成功" }, 200, request, env);
 }
 
 // ─────────────────────────────────────────────
@@ -349,30 +314,33 @@ async function handleNotify(request, env) {
   } = body;
 
   if (!token || !scenario) {
-    return json({ detail: "token, scenario required" }, 400);
+    return json({ detail: "token, scenario required" }, 400, request, env);
   }
 
   const store = new KVStore(env.SCAN_KV);
   const barkBaseUrl = env.BARK_BASE_URL || "https://api.day.app";
 
+  // ── 场景白名单校验 ──
+  if (!VALID_SCENARIOS.has(scenario)) {
+    return json({ detail: "无效场景，请从预设选项中选择" }, 400, request, env);
+  }
+
   // ── 延迟流程二次调用 ──
   if (pending_id) {
     const notif = await store.getNotification(parseInt(pending_id));
-    if (!notif) return json({ detail: "通知不存在" }, 404);
+    if (!notif) return json({ detail: "通知不存在" }, 404, request, env);
     if (notif.status !== "waiting_confirmation") {
-      return json({ success: true, status: notif.status, message: "已处理" });
+      return json({ success: true, status: notif.status, message: "已处理" }, 200, request, env);
     }
 
     const owner = await store.getOwner(token);
-    if (!owner) return json({ detail: "车主不存在" }, 404);
+    if (!owner) return json({ detail: "车主不存在" }, 404, request, env);
 
     const urgencyLevel = urgency || SCENARIO_DEFAULT_URGENCY[scenario] || "default";
     const plateInfo = car_plate ? `被挡:${car_plate}\n` : "";
-    const confirmBase = env.CONFIRM_BASE_URL || "YOUR_PAGES_DOMAIN";
-    const confirmedKey = notif.confirmed_key;
-    const confirmUrl = `${confirmBase}/confirm?key=${confirmedKey}`;
+    const confirmUrl = `${buildConfirmUrl(env)}?key=${notif.confirmed_key}`;
     const title = `🔔 ${scenario}`;
-    const text = `${plateInfo}请确认是否能够挪车\n\n确认码: ${confirmedKey}\n链接: ${confirmUrl}`;
+    const text = `${plateInfo}请确认是否能够挪车\n\n确认码: ${notif.confirmed_key}\n链接: ${confirmUrl}`;
     const ok = await pushBark(owner.bark_key, title, text, urgencyLevel, barkBaseUrl);
 
     await store.setNotification(notif.id, {
@@ -397,16 +365,16 @@ async function handleNotify(request, env) {
       success: ok,
       pending_id: String(notif.id),
       message: ok ? "推送成功" : "推送失败，请稍后重试",
-    });
+    }, 200, request, env);
   }
 
   // ── 普通流程 ──
   const owner = await store.getOwner(token);
-  if (!owner) return json({ detail: "车主不存在" }, 404);
+  if (!owner) return json({ detail: "车主不存在" }, 404, request, env);
 
   const todayCnt = await store.getDailyCount(token);
   if (todayCnt >= MAX_PER_DAY) {
-    return json({ detail: `今日推送次数已达上限（${MAX_PER_DAY}次），请明天再试` }, 429);
+    return json({ detail: `今日推送次数已达上限（${MAX_PER_DAY}次），请明天再试` }, 429, request, env);
   }
 
   const urgencyLevel = urgency || SCENARIO_DEFAULT_URGENCY[scenario] || "default";
@@ -437,14 +405,14 @@ async function handleNotify(request, env) {
       pending_id: String(nid),
       can_send_at: waitUntil,
       message: "提交成功，需等待 30 秒后才能发送通知（防止恶意骚扰）",
-    });
+    }, 200, request, env);
   }
 
-  // ── 有位置：立即推送 ──
+  // 有位置：立即推送
   const confirmedKey = genConfirmedKey();
   const nid = await store.nextNotifId();
   const plateInfo = car_plate ? `被挡:${car_plate}\n` : "";
-  
+
   // 尝试获取地址
   let locationInfo = "";
   if (userLat && userLon) {
@@ -460,9 +428,8 @@ async function handleNotify(request, env) {
       locationInfo = `位置：${userLat},${userLon}\n`;
     }
   }
-  
-  const confirmBase = env.CONFIRM_BASE_URL || "YOUR_PAGES_DOMAIN";
-  const confirmUrl = `${confirmBase}/confirm?key=${confirmedKey}`;
+
+  const confirmUrl = `${buildConfirmUrl(env)}?key=${confirmedKey}`;
   const title = `🔔 ${scenario}`;
   const text = `${plateInfo}${locationInfo}请确认是否能够挪车\n\n确认码: ${confirmedKey}\n链接: ${confirmUrl}`;
   const ok = await pushBark(owner.bark_key, title, text, urgencyLevel, barkBaseUrl);
@@ -493,7 +460,7 @@ async function handleNotify(request, env) {
     success: ok,
     pending_id: String(nid),
     message: ok ? "推送成功" : "推送失败，请稍后重试",
-  });
+  }, 200, request, env);
 }
 
 // ─────────────────────────────────────────────
@@ -504,7 +471,7 @@ async function handleStatus(id, env) {
   const barkBaseUrl = env.BARK_BASE_URL || "https://api.day.app";
 
   const notif = await store.getNotification(id);
-  if (!notif) return json({ detail: "通知不存在" }, 404);
+  if (!notif) return json({ detail: "通知不存在" }, 404, null, env);
 
   // 无位置延迟流程
   if (notif.status === "waiting_confirmation" && notif.wait_until) {
@@ -530,8 +497,7 @@ async function handleStatus(id, env) {
             locationInfo = `位置：${notif.requester_lat},${notif.requester_lon}\n`;
           }
         }
-        const confirmBase = env.CONFIRM_BASE_URL || "YOUR_PAGES_DOMAIN";
-        const confirmUrl = `${confirmBase}/confirm?key=${notif.confirmed_key}`;
+        const confirmUrl = `${buildConfirmUrl(env)}?key=${notif.confirmed_key}`;
         const title = `🔔 ${notif.scenario}`;
         const text = `${plateInfo}${locationInfo}请确认是否能够挪车\n\n确认码: ${notif.confirmed_key}\n链接: ${confirmUrl}`;
         const ok = await pushBark(owner.bark_key, title, text, urgencyLevel, barkBaseUrl);
@@ -561,7 +527,7 @@ async function handleStatus(id, env) {
         car_plate: notif.car_plate || "",
         can_send_at: notif.wait_until,
         remaining_seconds: remaining,
-      });
+      }, 200, null, env);
     }
   }
 
@@ -573,7 +539,7 @@ async function handleStatus(id, env) {
     car_plate: notif.car_plate || "",
     requester_lat: notif.requester_lat || 0,
     requester_lon: notif.requester_lon || 0,
-  });
+  }, 200, null, env);
 }
 
 // ─────────────────────────────────────────────
@@ -582,14 +548,14 @@ async function handleStatus(id, env) {
 async function handleStatusByKey(key, env) {
   const store = new KVStore(env.SCAN_KV);
   const notif = await store.getNotificationByKey(key);
-  if (!notif) return json({ status: "not_found" });
+  if (!notif) return json({ status: "not_found" }, 404, null, env);
   return json({
     status: notif.status,
     scenario: notif.scenario || "",
     message: notif.message || "",
     submitted_at: notif.submitted_at || "",
     car_plate: notif.car_plate || "",
-  });
+  }, 200, null, env);
 }
 
 // ─────────────────────────────────────────────
@@ -600,16 +566,16 @@ async function handleConfirm(key, env) {
   const barkBaseUrl = env.BARK_BASE_URL || "https://api.day.app";
 
   const notif = await store.getNotificationByKey(key);
-  if (!notif) return json({ detail: "确认链接无效或已过期" }, 404);
+  if (!notif) return json({ detail: "确认链接无效或已过期" }, 404, null, env);
   if (notif.status === "confirmed" || notif.status === "rejected") {
-    return json({ ok: true, message: "已经处理过了" });
+    return json({ ok: true, message: "已经处理过了" }, 200, null, env);
   }
 
-  await store.setNotification(notif.id, {
+  await store.setNotificationWithTTL(notif.id, {
     ...notif,
     status: "confirmed",
     confirmed_at: new Date().toISOString(),
-  });
+  }, 86400); // 24小时后过期，释放存储空间
   await store.deleteNotificationKey(key);
 
   // 二次推送告知扫码者
@@ -627,7 +593,7 @@ async function handleConfirm(key, env) {
     );
   }
 
-  return json({ ok: true, message: "确认成功" });
+  return json({ ok: true, message: "确认成功" }, 200, null, env);
 }
 
 // ─────────────────────────────────────────────
@@ -637,19 +603,19 @@ async function handleReject(key, env) {
   const store = new KVStore(env.SCAN_KV);
 
   const notif = await store.getNotificationByKey(key);
-  if (!notif) return json({ detail: "确认链接无效或已过期" }, 404);
+  if (!notif) return json({ detail: "确认链接无效或已过期" }, 404, null, env);
   if (notif.status === "confirmed" || notif.status === "rejected") {
-    return json({ ok: true, message: "已经处理过了" });
+    return json({ ok: true, message: "已经处理过了" }, 200, null, env);
   }
 
-  await store.setNotification(notif.id, {
+  await store.setNotificationWithTTL(notif.id, {
     ...notif,
     status: "rejected",
     confirmed_at: new Date().toISOString(),
-  });
+  }, 86400); // 24小时后过期
   await store.deleteNotificationKey(key);
 
-  return json({ ok: true, message: "已拒绝" });
+  return json({ ok: true, message: "已拒绝" }, 200, null, env);
 }
 
 // ─────────────────────────────────────────────
@@ -667,11 +633,11 @@ async function handleConfirmPage(url, env) {
     return new Response("<h1>链接已失效或不存在</h1>", { status: 404, headers: { "Content-Type": "text/html" } });
   }
 
-  const scenario = notif.scenario || "";
-  const message = notif.message || "";
+  const scenario = escapeHtml(notif.scenario || "");
+  const message = escapeHtml(notif.message || "");
   const reqLat = notif.requester_lat || 0;
   const reqLon = notif.requester_lon || 0;
-  const carPlate = notif.car_plate || "";
+  const carPlate = escapeHtml(notif.car_plate || "");
   const status = notif.status || "pending";
   const statusLabel = {
     waiting_confirmation: "等待确认",
@@ -807,7 +773,7 @@ async function handleHistory(token, env) {
     message: r.message,
     pushed_at: r.pushed_at,
     success: r.success,
-  })));
+  })), 200, null, env);
 }
 
 // ─────────────────────────────────────────────
@@ -816,16 +782,16 @@ async function handleHistory(token, env) {
 async function handleScan(scanId, env) {
   const store = new KVStore(env.SCAN_KV);
   const scan = await store.getScan(scanId);
-  if (!scan || !scan.active) return json({ detail: "二维码不存在或已禁用" }, 404);
+  if (!scan || !scan.active) return json({ detail: "二维码不存在或已禁用" }, 404, null, env);
   const owner = await store.getOwner(scan.owner_token);
-  if (!owner) return json({ detail: "车主不存在" }, 404);
+  if (!owner) return json({ detail: "车主不存在" }, 404, null, env);
   return json({
     token: owner.token,
     name: owner.name,
     license_plates: owner.license_plates || [],
     latitude: owner.latitude || 0,
     longitude: owner.longitude || 0,
-  });
+  }, 200, null, env);
 }
 
 // ─────────────────────────────────────────────
@@ -834,14 +800,14 @@ async function handleScan(scanId, env) {
 async function handleQr(token, env) {
   const store = new KVStore(env.SCAN_KV);
   const owner = await store.getOwner(token);
-  if (!owner) return json({ detail: "车主不存在" }, 404);
+  if (!owner) return json({ detail: "车主不存在" }, 404, null, env);
   return json({
     token: owner.token,
     name: owner.name,
     license_plates: owner.license_plates || [],
     latitude: owner.latitude || 0,
     longitude: owner.longitude || 0,
-  });
+  }, 200, null, env);
 }
 
 // ─────────────────────────────────────────────
