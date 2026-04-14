@@ -601,6 +601,11 @@ function showKeyboard() {
   document.body.classList.add('keyboard-open');
   keyboardShown = true;
   showKbTab('province');
+  // 滚动车牌格到可视区域，避免被键盘遮挡
+  const activeCell = document.querySelector('.plate-char-cell.active');
+  if (activeCell) {
+    setTimeout(() => activeCell.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+  }
   if (navigator.userAgent.match(/iphone|ipad/i)) {
     kb.style.paddingBottom = 'max(8px, env(safe-area-inset-bottom))';
   }
@@ -720,6 +725,7 @@ document.querySelectorAll('.scenario-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
+    savedScenario = btn.dataset.val;
     document.getElementById('scenario').value = btn.dataset.val;
     document.getElementById("submitBtn").disabled = false;
   });
