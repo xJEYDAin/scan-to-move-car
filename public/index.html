@@ -264,7 +264,7 @@
       <h1>车主，这里有人需要挪车</h1>
       <p class="subtitle">扫码一键通知，无需拨打电话</p>
     </div>
-    <form id="notifyForm">
+    <form id="notifyForm" onsubmit="doSubmit(); return false;">
       <label>请选择情况</label>
       <div class="scenarios" id="scenarios">
         <button type="button" class="scenario-btn active" data-val="小区">🏠 小区</button>
@@ -516,8 +516,9 @@ function onKey(char) {
   updatePlateHint();
 
   if (activeIndex < maxIdx) {
-    // 智能切键盘：第3位以后都切字母键盘
-    showKbTab('letter');
+    // 智能切键盘：自动切换到下一位对应的键盘
+    if (activeIndex === 1) showKbTab('letter');
+    else if (activeIndex >= 2) showKbTab('digit');
   }
 }
 
@@ -590,7 +591,8 @@ document.querySelectorAll('.plate-char-cell').forEach(cell => {
     updateActiveCell();
     showKeyboard();
     if (idx === 0) showKbTab('province');
-    else showKbTab('letter');
+    else if (idx === 1) showKbTab('letter');
+    else showKbTab('digit');
   });
 });
 
