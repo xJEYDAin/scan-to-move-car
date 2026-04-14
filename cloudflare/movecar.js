@@ -319,7 +319,7 @@ async function handleRequest(request, env) {
     return handleStatusByKey(key, env);
   }
   if (path.startsWith("/api/status/") && request.method === "GET") {
-    const id = parseInt(path.split("/")[3]);
+    const id = path.split("/")[3];
     return handleStatus(id, env);
   }
   if (path.startsWith("/api/confirm/") && request.method === "POST") {
