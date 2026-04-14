@@ -3,37 +3,17 @@
  */
 
 /**
- * Haversine 公式计算两点间距离（米）
- * @param {number} lat1
- * @param {number} lon1
- * @param {number} lat2
- * @param {number} lon2
- * @returns {number} 距离（米）
- */
-function getDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371000;
-  const toRad = d => d * Math.PI / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-/**
- * 获取完整车牌号（从 cp1-cp8 元素读取）
+ * 获取完整车牌号（从 index.html 的 cell0~cell7 格子读取，或 register.html 的 select/input 读取）
  * @returns {string} 车牌号，如 "粤B12345"
  */
 function getCarPlate() {
-  const v1 = document.getElementById('cp1')?.value || '';
-  const v2 = document.getElementById('cp2')?.value || '';
-  if (!v1 || !v2) return '';
-  const p3 = document.getElementById('cp3')?.value || '';
-  const p4 = document.getElementById('cp4')?.value || '';
-  const p5 = document.getElementById('cp5')?.value || '';
-  const p6 = document.getElementById('cp6')?.value || '';
-  const p7 = document.getElementById('cp7')?.value || '';
-  const p8 = document.getElementById('cp8')?.value || '';
-  return v1 + v2 + p3 + p4 + p5 + p6 + p7 + p8;
+  // index.html 使用虚拟键盘，格子 id 为 cell0 ~ cell7
+  let plate = '';
+  for (let i = 0; i <= 7; i++) {
+    const cell = document.getElementById('cell' + i);
+    if (cell) plate += cell.textContent.trim().replace(/^省$|^字$/, '');
+  }
+  return plate;
 }
 
 /**

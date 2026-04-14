@@ -104,17 +104,17 @@ function getMessage(scene, extraMsg = '') {
 
 /**
  * Bark 推送选项（供后端使用）
- * high urgency → alarm 声音，moderate → 静音模式
+ * 紧急程度与后端 SOUNDS 映射：critical(紧急)/high(重要)/warning(警告)/low(低)
  */
 const BARK_OPTIONS = {
-  小区:         { sound: 'default',  isArchive: 0 },
-  商场:         { sound: 'default',  isArchive: 0 },
-  路边:         { sound: 'alarm',    isArchive: 0 },
-  '停车场出口': { sound: 'alarm',    isArchive: 0 },
-  '地下车库':   { sound: 'default',  isArchive: 0 },
-  '医院/学校':  { sound: 'alarm',    isArchive: 0 },
-  '景区':       { sound: 'default',  isArchive: 0 },
-  '加油站':     { sound: 'alarm',    isArchive: 0 },
-  '其他':       { sound: 'default',  isArchive: 0 },
+  小区:         { urgency: "low",     sound: "default" },
+  商场:         { urgency: "low",     sound: "default" },
+  路边:         { urgency: "high",    sound: "alarm"   },
+  "停车场出口": { urgency: "critical", sound: "alarm"   },
+  "地下车库":   { urgency: "low",     sound: "default" },
+  "医院/学校":  { urgency: "critical", sound: "alarm"   },
+  "景区":       { urgency: "low",     sound: "default" },
+  "加油站":     { urgency: "high",    sound: "alarm"   },
+  "其他":       { urgency: "low",     sound: "default" },
 };
 

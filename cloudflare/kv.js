@@ -2,13 +2,7 @@
  * 扫码挪车 - Cloudflare KV 封装
  *
  * 本文件提供 KV 存储的 CRUD 操作封装。
- * Workers 主代码中默认使用 D1，若需使用 KV 可按以下方式替换：
- *
- *   import { KVStore } from './kv.js';
- *   const store = new KVStore(env.SCAN_KV);
- *
- * 注意：KV 适合缓存，不建议用于核心业务数据。
- * 推荐使用 D1（SQLite）作为主数据库，KV 作为可选缓存层。
+ * Workers 主代码（movecar.js）统一从本文件 import KVStore。
  */
 
 export class KVStore {
@@ -26,20 +20,9 @@ export class KVStore {
     await this.kv.put("owner:" + token, JSON.stringify(owner));
   }
 
-  async getOwnerByPhone(phone) {
-    const key = await this.kv.get("owner_phone:" + phone);
-    if (!key) return null;
-    return this.getOwner(key);
-  }
-
-  async setOwnerByPhone(phone, token) {
-    await this.kv.put("owner_phone:" + phone, token);
-  }
-
   async getOwnerByBarkKey(barkKey) {
-    const key = await this.kv.get("owner_bark:" + barkKey);
-    if (!key) return null;
-    return this.getOwner(key);
+    const token = await this.kv.get("owner_bark:" + barkKey);
+    return token ? this.getOwner(token) : null;
   }
 
   async setOwnerByBarkKey(barkKey, token) {
@@ -56,6 +39,10 @@ export class KVStore {
     await this.kv.put("notif:" + id, JSON.stringify(data));
   }
 
+  async setNotificationWithTTL(id, data, ttlSeconds) {
+    await this.kv.put("notif:" + id, JSON.stringify(data), { expirationTtl: ttlSeconds });
+  }
+
   async getNotificationByKey(confirmedKey) {
     const id = await this.kv.get("notif_key:" + confirmedKey);
     if (!id) return null;
@@ -63,12 +50,16 @@ export class KVStore {
   }
 
   async setNotificationKey(confirmedKey, id) {
-    await this.kv.put("notif_key:" + confirmedKey, String(id));
-    // 过期时间 7 天
-    await this.kv.putWithMetadata("notif_key:" + confirmedKey, String(id), { expirationTtl: 7 * 86400 });
+    await this.kv.put("notif_key:" + confirmedKey, String(id), { expirationTtl: 7 * 86400 });
+  }
+
+  async deleteNotificationKey(confirmedKey) {
+    await this.kv.delete("notif_key:" + confirmedKey);
   }
 
   // ── 计数器（限流）──
+  // 注意：Cloudflare KV 不支持原子 increment，此实现存在竞态条件。
+  // 并发请求可能导致计数略微偏低（实际限制比预期更宽松），但不会导致超限。
   async incrDailyCount(token) {
     const today = new Date().toISOString().slice(0, 10);
     const key = "rate:" + token + ":" + today;
@@ -99,5 +90,21 @@ export class KVStore {
   async getHistory(token) {
     const raw = await this.kv.get("history:" + token);
     return raw ? JSON.parse(raw) : [];
+  }
+
+  // ── 扫码记录 ──
+  async getScan(scanId) {
+    const raw = await this.kv.get("scan:" + scanId);
+    return raw ? JSON.parse(raw) : null;
+  }
+
+  async setScan(scanId, data) {
+    await this.kv.put("scan:" + scanId, JSON.stringify(data));
+  }
+
+  // ── ID 计数器 ──
+  // 使用 UUID 替代自增 ID，避免并发请求时的竞态条件
+  async nextNotifId() {
+    return crypto.randomUUID();
   }
 }

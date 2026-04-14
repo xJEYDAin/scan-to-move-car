@@ -131,6 +131,16 @@ function escapeHtml(str) {
     .replace(/'/g, "&#39;");
 }
 
+// JavaScript 字符串转义（用于模板中嵌入 JS 字符串）
+function escapeJsStr(str) {
+  if (str == null) return "";
+  return String(str)
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r");
+}
+
 // 构建前端确认页 URL（统一处理域名）
 function buildConfirmUrl(env, path = "confirm") {
   const domain = env.CONFIRM_BASE_URL || env.PAGES_DOMAIN || "";
@@ -327,10 +337,18 @@ async function handleNotify(request, env) {
 
   // ── 延迟流程二次调用 ──
   if (pending_id) {
-    const notif = await store.getNotification(parseInt(pending_id));
+    const notif = await store.getNotification(pending_id);
     if (!notif) return json({ detail: "通知不存在" }, 404, request, env);
     if (notif.status !== "waiting_confirmation") {
       return json({ success: true, status: notif.status, message: "已处理" }, 200, request, env);
+    }
+    // 验证延迟时间，防止绕过 30 秒限制
+    if (notif.wait_until) {
+      const waitMs = new Date(notif.wait_until).getTime();
+      if (Date.now() < waitMs) {
+        const remainingSec = Math.ceil((waitMs - Date.now()) / 1000);
+        return json({ detail: `还需等待 ${remainingSec} 秒` }, 429, request, env);
+      }
     }
 
     const owner = await store.getOwner(token);
@@ -708,7 +726,7 @@ h1{font-size:24px;text-align:center;margin-bottom:8px;color:#1a1a2e;font-weight:
   <div class="msg" id="msg"></div>
 </div>
 <script>
-const key = "${key}";
+const key = "${escapeJsStr(key)}";
 async function doConfirm(){
   setBtns(false);
   try {

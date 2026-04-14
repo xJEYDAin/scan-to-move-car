@@ -246,6 +246,15 @@ document.getElementById('regForm').addEventListener('submit', async e => {
     btn.textContent = '注册并生成二维码';
     return;
   }
+  // 车牌格式校验
+  const PLATE_RE = /^[京津沪渝冀豫云辽黑湘皖鲁新苏浙赣鄂桂甘晋蒙陕吉闽贵粤青藏川宁琼][A-Z][A-Z0-9]{5,6}$/;
+  const invalid = plates.find(p => !PLATE_RE.test(p));
+  if (invalid) {
+    showErr('车牌格式错误：' + invalid);
+    btn.disabled = false;
+    btn.textContent = '注册并生成二维码';
+    return;
+  }
 
   try {
     const resp = await fetch(API_BASE + '/api/register', {
@@ -256,7 +265,7 @@ document.getElementById('regForm').addEventListener('submit', async e => {
         license_plates: plates,
         bark_key: (() => {
           const v = document.getElementById('bark_key').value.trim();
-          if (v.startsWith('http')) return v.split('/').pop();
+          if (v.startsWith('http')) return v.split('/').filter(Boolean).pop() || v;
           return v;
         })(),
       }),
