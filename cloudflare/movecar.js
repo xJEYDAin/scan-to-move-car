@@ -7,11 +7,92 @@
  *   # 将返回的 id 填入 wrangler.toml 的 [[kv_namespaces]] id 字段
  *   wrangler secret put BARK_BASE_URL   # 可选，默认 api.day.app
  *   wrangler deploy
- *
- * 注意：KVStore 已移至 kv.js，本文件统一 import 使用。
  */
 
-import { KVStore } from './kv.js';
+// ─────────────────────────────────────────────
+// KV 存储封装
+// ─────────────────────────────────────────────
+class KVStore {
+  constructor(kv) { this.kv = kv; }
+
+  async getOwner(token) {
+    const raw = await this.kv.get("owner:" + token);
+    return raw ? JSON.parse(raw) : null;
+  }
+  async setOwner(token, owner) {
+    await this.kv.put("owner:" + token, JSON.stringify(owner));
+  }
+  async getOwnerByBarkKey(barkKey) {
+    const token = await this.kv.get("owner_bark:" + barkKey);
+    return token ? this.getOwner(token) : null;
+  }
+  async setOwnerByBarkKey(barkKey, token) {
+    await this.kv.put("owner_bark:" + barkKey, token);
+  }
+
+  async getNotification(id) {
+    const raw = await this.kv.get("notif:" + id);
+    return raw ? JSON.parse(raw) : null;
+  }
+  async setNotification(id, data) {
+    await this.kv.put("notif:" + id, JSON.stringify(data));
+  }
+  async setNotificationWithTTL(id, data, ttlSeconds) {
+    await this.kv.put("notif:" + id, JSON.stringify(data), { expirationTtl: ttlSeconds });
+  }
+  async getNotificationByKey(confirmedKey) {
+    const id = await this.kv.get("notif_key:" + confirmedKey);
+    return id ? this.getNotification(id) : null;
+  }
+  async setNotificationKey(confirmedKey, id) {
+    await this.kv.put("notif_key:" + confirmedKey, String(id), { expirationTtl: 7 * 86400 });
+  }
+  async deleteNotificationKey(confirmedKey) {
+    await this.kv.delete("notif_key:" + confirmedKey);
+  }
+
+  // 计数器（限流）—— Cloudflare KV 不支持原子 increment，存在轻微竞态
+  async incrDailyCount(token) {
+    const today = new Date().toISOString().slice(0, 10);
+    const key = "rate:" + token + ":" + today;
+    const val = await this.kv.get(key);
+    const cnt = val ? parseInt(val) + 1 : 1;
+    await this.kv.put(key, String(cnt));
+    return cnt;
+  }
+  async getDailyCount(token) {
+    const today = new Date().toISOString().slice(0, 10);
+    const key = "rate:" + token + ":" + today;
+    const val = await this.kv.get(key);
+    return val ? parseInt(val) : 0;
+  }
+
+  async appendHistory(token, notification) {
+    const listKey = "history:" + token;
+    const raw = await this.kv.get(listKey);
+    const list = raw ? JSON.parse(raw) : [];
+    list.unshift(notification);
+    if (list.length > 50) list.splice(50);
+    await this.kv.put(listKey, JSON.stringify(list));
+  }
+  async getHistory(token) {
+    const raw = await this.kv.get("history:" + token);
+    return raw ? JSON.parse(raw) : [];
+  }
+
+  async getScan(scanId) {
+    const raw = await this.kv.get("scan:" + scanId);
+    return raw ? JSON.parse(raw) : null;
+  }
+  async setScan(scanId, data) {
+    await this.kv.put("scan:" + scanId, JSON.stringify(data));
+  }
+
+  // 使用 UUID 替代自增 ID，避免并发请求时的竞态条件
+  async nextNotifId() {
+    return crypto.randomUUID();
+  }
+}
 
 // ─────────────────────────────────────────────
 // 常量
