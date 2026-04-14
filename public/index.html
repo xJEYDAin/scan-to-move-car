@@ -264,7 +264,7 @@
       <h1>车主，这里有人需要挪车</h1>
       <p class="subtitle">扫码一键通知，无需拨打电话</p>
     </div>
-    <form id="notifyForm" onsubmit="doSubmit(); return false;">
+    <form id="notifyForm">
       <label>请选择情况</label>
       <div class="scenarios" id="scenarios">
         <button type="button" class="scenario-btn active" data-val="小区">🏠 小区</button>
@@ -750,6 +750,45 @@ function closeWindow() {
 }
 
 let submitController = null;
+
+// ── 提示信息 ──
+function showErr(text) {
+  const el = document.getElementById("msg");
+  el.textContent = text;
+  el.className = "msg error";
+}
+
+function showLoading(text) {
+  document.getElementById("loadingText").textContent = text;
+  document.getElementById("loadingOverlay").classList.add("show");
+}
+
+function hideLoading() {
+  document.getElementById("loadingOverlay").classList.remove("show");
+}
+
+// ── 获取位置 ──
+function getLocation() {
+  if (!navigator.geolocation) {
+    showErr("浏览器不支持定位功能");
+    return;
+  }
+  document.getElementById("locHint").textContent = "正在获取位置...";
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      document.getElementById("userLat").value = pos.coords.latitude;
+      document.getElementById("userLon").value = pos.coords.longitude;
+      document.getElementById("locHint").textContent = "位置已获取 ✓";
+      document.getElementById("locHint").style.color = "#52c41a";
+    },
+    () => {
+      document.getElementById("locHint").textContent = "无法获取位置，请重试";
+      document.getElementById("locHint").style.color = "#ff4d4f";
+    }
+  );
+}
+
+document.getElementById("getLocBtn").addEventListener("click", getLocation);
 
 function doSubmit() {
   const msg = document.getElementById("msg");
