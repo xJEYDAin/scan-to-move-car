@@ -718,9 +718,12 @@ document.querySelectorAll('.msg-btn').forEach(btn => {
 // 场景按钮
 document.querySelectorAll('.scenario-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    document.querySelectorAll('.scenario-btn').forEach
+    document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('scenario').value = btn.dataset.val;
     document.getElementById("submitBtn").disabled = false;
-}
+  });
+});
 
 function showTimeoutRetry() {
   document.getElementById("loadingText").textContent = "发送超时，请重试";
