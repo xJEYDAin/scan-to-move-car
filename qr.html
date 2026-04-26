@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>二维码 - 扫码挪车</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .card { text-align: center; padding: 40px 36px; }
+
+  /* Token 自动带入 */
+  .token-display { font-size: 12px; color: #999; margin-bottom: 10px; display: none; }
+  .token-display code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-family: 'Courier New', monospace; }
+
+  /* 使用说明 */
+  .guide { text-align: left; background: #f8f7ff; border: 1px solid #e0dcff; border-radius: 14px; padding: 16px 18px; margin-top: 20px; }
+  .guide-title { font-size: 13px; font-weight: 700; color: #667eea; margin-bottom: 10px; display: flex; align-items: center; gap: 5px; }
+  .guide ol { font-size: 13px; color: #666; padding-left: 18px; line-height: 1.9; }
+  .guide ol li { margin-bottom: 2px; }
+  .guide ol li strong { color: #333; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="hero-icon">📱</div>
+  <h1>生成挪车二维码</h1>
+  <p class="subtitle">输入 Token 生成专属挪车码</p>
+
+  <input type="text" id="tokenInput" placeholder="请输入或粘贴 Token">
+  <div class="token-display" id="tokenDisplay"></div>
+  <button class="gen-btn" id="genBtn">🎯 生成二维码</button>
+  <div class="msg" id="msg"></div>
+
+  <div class="qr-area" id="qrArea">
+    <div class="qr-wrapper">
+      <div id="qrcode"></div>
+    </div>
+    <div class="owner-badge" id="ownerBadge">🚗 车主已认证</div>
+    <div class="action-btns">
+      <button class="action-btn primary" id="downloadBtn">⬇️ 下载二维码</button>
+      <button class="action-btn secondary" id="printBtn">🖨️ 打印</button>
+      <button class="action-btn secondary" id="copyUrlBtn">📋 复制链接</button>
+    </div>
+
+    <div class="guide">
+      <div class="guide-title">📋 使用说明</div>
+      <ol>
+        <li><strong>下载或打印</strong>二维码，贴在车窗内侧</li>
+        <li>有人需要您挪车时，<strong>扫码</strong>选择情况并留言</li>
+        <li>您会收到 <strong>Bark 推送</strong>，显示挪车位置和原因</li>
+        <li>文明停车，方便你我他 🚗</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+<script src="common.js"></script>
+<script>
+const API_BASE = 'https://api.movecar.eggtata.top';
+// 自动从 URL 读取 scan_id（新版）或 token（兼容旧版）
+const urlParams = new URLSearchParams(window.location.search);
+const autoScanId = urlParams.get('scan_id');
+const autoToken = urlParams.get('token');
+
+if (autoScanId) {
+  document.getElementById('tokenInput').value = autoScanId;
+  document.getElementById('tokenDisplay').style.display = 'block';
+  document.getElementById('tokenDisplay').innerHTML = 'Scan ID：<code>' + autoScanId + '</code>';
+  setTimeout(() => document.getElementById('genBtn').click(), 300);
+} else if (autoToken) {
+  document.getElementById('tokenInput').value = autoToken;
+  document.getElementById('tokenDisplay').style.display = 'block';
+  document.getElementById('tokenDisplay').innerHTML = 'Token（兼容）：<code>' + autoToken + '</code>';
+  setTimeout(() => document.getElementById('genBtn').click(), 300);
+}
+
+let currentScanId = autoScanId || '';
+let currentToken = autoToken || '';
+let currentUrl = '';
+
+document.getElementById('genBtn').addEventListener('click', async () => {
+  const input = document.getElementById('tokenInput').value.trim();
+  const msgEl = document.getElementById('msg');
+  const qrArea = document.getElementById('qrArea');
+  if (!input) { showErr('请输入 Scan ID 或 Token'); return; }
+  msgEl.textContent = '';
+  msgEl.className = 'msg';
+  try {
+    let owner;
+    let scanId = '';
+    try {
+      const resp = await fetch(API_BASE + `/api/scan/${input}`);
+      if (resp.ok) owner = await resp.json();
+      scanId = input;
+    } catch (_) { /* fall through */ }
+
+    if (!owner) {
+      const resp2 = await fetch(API_BASE + `/api/qr/${input}`);
+      if (!resp2.ok) { showErr('不存在？请前往注册'); return; }
+      owner = await resp2.json();
+      scanId = '';
+    }
+
+    currentScanId = scanId;
+    currentToken = input;
+    const qrParam = scanId ? `scan_id=${scanId}` : `token=${input}`;
+    const notifyUrl = `${location.origin}/index.html?${qrParam}`;
+    currentUrl = notifyUrl;
+
+    const qrDiv = document.getElementById('qrcode');
+    qrDiv.innerHTML = '';
+    const canvas = document.createElement('canvas');
+    canvas.width = 220;
+    canvas.height = 220;
+    canvas.style.borderRadius = '8px';
+    qrDiv.appendChild(canvas);
+    QRCode.toCanvas(canvas, notifyUrl, { width: 220 }, (err) => {
+      if (err) console.error('QR error:', err);
+    });
+
+    const badge = document.getElementById('ownerBadge');
+    badge.textContent = `🚗 ${owner.name} · 挪车码`;
+
+    qrArea.style.display = 'block';
+  } catch {
+    showErr('网络错误，请稍后重试');
+  }
+});
+
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  const canvas = document.querySelector('#qrcode canvas');
+  if (!canvas) return;
+  const link = document.createElement('a');
+  link.download = `挪车码_${currentToken.slice(0, 8)}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+});
+
+document.getElementById('printBtn').addEventListener('click', () => {
+  const canvas = document.querySelector('#qrcode canvas');
+  if (!canvas) return;
+  const img = canvas.toDataURL('image/png');
+  const w = window.open('', '', 'width=400,height=500');
+  w.document.write(`<html><head><title>挪车二维码</title><style>body{text-align:center;padding:30px;font-family:sans-serif}h2{color:#333;font-size:20px;margin-bottom:20px}img{border-radius:8px;border:2px solid #eee}p{color:#888;font-size:14px;margin-top:16px}</style></head><body><h2>🚗 扫码挪车</h2><img src="${img}" width="220"><p>扫描后填写情况，车主即会收到通知</p></body></html>`);
+  w.document.close();
+  w.focus();
+  setTimeout(() => { w.print(); w.close(); }, 500);
+});
+
+document.getElementById('copyUrlBtn').addEventListener('click', () => {
+  if (!currentUrl) return;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(currentUrl).then(() => {
+      const btn = document.getElementById('copyUrlBtn');
+      btn.textContent = '✅ 已复制';
+      setTimeout(() => btn.textContent = '📋 复制链接', 1500);
+    });
+  }
+});
+</script>
+</body>
+</html>
+

@@ -1,0 +1,984 @@
+/**
+ * 扫码挪车 - Cloudflare Workers
+ *
+ * 部署步骤：
+ *   cd cloudflare
+ *   wrangler kv:namespace create "SCAN_KV"
+ *   # 将返回的 id 填入 wrangler.toml 的 [[kv_namespaces]] id 字段
+ *   wrangler secret put BARK_BASE_URL   # 可选，默认 api.day.app
+ *   wrangler deploy
+ */
+
+// ─────────────────────────────────────────────
+// KV 存储封装
+// ─────────────────────────────────────────────
+class KVStore {
+  constructor(kv) { this.kv = kv; }
+
+  async getOwner(token) {
+    const raw = await this.kv.get("owner:" + token);
+    return raw ? JSON.parse(raw) : null;
+  }
+  async setOwner(token, owner) {
+    await this.kv.put("owner:" + token, JSON.stringify(owner));
+  }
+  async getOwnerByBarkKey(barkKey) {
+    const token = await this.kv.get("owner_bark:" + barkKey);
+    return token ? this.getOwner(token) : null;
+  }
+  async setOwnerByBarkKey(barkKey, token) {
+    await this.kv.put("owner_bark:" + barkKey, token);
+  }
+
+  async getNotification(id) {
+    const raw = await this.kv.get("notif:" + id);
+    return raw ? JSON.parse(raw) : null;
+  }
+  async setNotification(id, data) {
+    await this.kv.put("notif:" + id, JSON.stringify(data));
+  }
+  async setNotificationWithTTL(id, data, ttlSeconds) {
+    await this.kv.put("notif:" + id, JSON.stringify(data), { expirationTtl: ttlSeconds });
+  }
+  async getNotificationByKey(confirmedKey) {
+    const id = await this.kv.get("notif_key:" + confirmedKey);
+    return id ? this.getNotification(id) : null;
+  }
+  async setNotificationKey(confirmedKey, id) {
+    await this.kv.put("notif_key:" + confirmedKey, String(id), { expirationTtl: 7 * 86400 });
+  }
+  async deleteNotificationKey(confirmedKey) {
+    await this.kv.delete("notif_key:" + confirmedKey);
+  }
+
+  // 计数器（限流）—— 用 get + put 模拟原子 increment，KV 写入本身是原子的
+  // 注意：并发请求时可能轻微超出上限（多个请求同时读到相同的 count），但实际影响极小
+  async incrDailyCount(token) {
+    const today = new Date().toISOString().slice(0, 10);
+    const key = "rate:" + token + ":" + today;
+    const val = await this.kv.get(key);
+    const cnt = (val ? parseInt(val, 10) : 0) + 1;
+    // 设置 25 小时 TTL，次日凌晨前必定过期，防止旧数据累积
+    await this.kv.put(key, String(cnt), { expirationTtl: 25 * 3600 });
+    return cnt;
+  }
+  async getDailyCount(token) {
+    const today = new Date().toISOString().slice(0, 10);
+    const key = "rate:" + token + ":" + today;
+    const val = await this.kv.get(key);
+    return val ? parseInt(val) : 0;
+  }
+
+  async appendHistory(token, notification) {
+    const listKey = "history:" + token;
+    const raw = await this.kv.get(listKey);
+    const list = raw ? JSON.parse(raw) : [];
+    list.unshift(notification);
+    if (list.length > 50) list.splice(50);
+    await this.kv.put(listKey, JSON.stringify(list));
+  }
+  async getHistory(token) {
+    const raw = await this.kv.get("history:" + token);
+    return raw ? JSON.parse(raw) : [];
+  }
+
+  async getScan(scanId) {
+    const raw = await this.kv.get("scan:" + scanId);
+    return raw ? JSON.parse(raw) : null;
+  }
+  async setScan(scanId, data) {
+    await this.kv.put("scan:" + scanId, JSON.stringify(data));
+  }
+
+  // 使用 UUID 替代自增 ID，避免并发请求时的竞态条件
+  async nextNotifId() {
+    return crypto.randomUUID();
+  }
+}
+
+// ─────────────────────────────────────────────
+// 常量
+// ─────────────────────────────────────────────
+const MAX_PER_DAY = 20;
+const NO_LOCATION_DELAY_MS = 30_000; // 30 秒延迟防骚扰
+const VALID_SCENARIOS = new Set([
+  "小区","商场","路边","停车场出口","地下车库","医院/学校","景区","加油站","其他"
+]);
+const SOUNDS = {
+  critical:  { sound: "alarm",       icon: "🔴" },
+  high:      { sound: "anticipate",  icon: "🟡" },
+  warning:   { sound: "static",      icon: "🟢" },
+  low:       { sound: "static",      icon: "⚪" },
+  default:   { sound: "static",      icon: "🔔" },
+};
+const SCENARIO_DEFAULT_URGENCY = {
+  "小区":        "low",
+  "商场":        "low",
+  "路边":        "high",
+  "停车场出口":  "critical",
+  "地下车库":    "low",
+  "医院/学校":   "critical",
+  "景区":        "low",
+  "加油站":      "high",
+  "其他":        "low",
+};
+
+// ─────────────────────────────────────────────
+// Bark 推送
+// ─────────────────────────────────────────────
+async function pushBark(barkKey, title, body, urgency = "default", barkBaseUrl = "https://api.day.app") {
+  const { sound } = SOUNDS[urgency] || SOUNDS["default"];
+  let baseUrl = barkBaseUrl;
+  let deviceKey = barkKey;
+
+  if (barkKey && barkKey.startsWith("http")) {
+    try {
+      const u = new URL(barkKey);
+      baseUrl = u.origin;
+      deviceKey = u.pathname.replace(/^\//, "");
+    } catch { /* ignore */ }
+  }
+
+  const url = `${baseUrl}/${deviceKey}/${encodeURIComponent(title)}/${encodeURIComponent(body)}?sound=${sound}&group=${encodeURIComponent("挪车提醒")}`;
+  try {
+    const resp = await fetch(url, { method: "GET", cf: { cacheTtl: 0 } });
+    if (resp.ok) {
+      try {
+        const data = await resp.json();
+        return data.code === 200;
+      } catch {
+        return true;
+      }
+    } else {
+      console.error(`Bark push failed: HTTP ${resp.status} for key ${deviceKey.slice(0, 8)}`);
+    }
+  } catch (e) {
+    console.error(`Bark push error: ${e.message} for key ${deviceKey.slice(0, 8)}, url: ${url}`);
+  }
+  return false;
+}
+
+// 地理编码：坐标转地址（使用高德地图）
+async function geocode(lat, lon, amapKey) {
+  if (!lat || !lon || !amapKey) return null;
+  try {
+    const url = `https://restapi.amap.com/v3/geocode/regeo?key=${amapKey}&location=${lon},${lat}&extensions=base`;
+    const resp = await fetch(url, { cf: { cacheTtl: 3600 } }); // 缓存1小时
+    const data = await resp.json();
+    if (data && data.status === "1" && data.regeocode) {
+      return data.regeocode.formatted_address; // 如："广东省深圳市南山区xxx"
+    }
+  } catch (e) {
+    console.error("Geocode error:", e);
+  }
+  return null;
+}
+
+// ─────────────────────────────────────────────
+// 工具函数
+// ─────────────────────────────────────────────
+function genToken() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz0123456789";
+  const arr = new Uint8Array(16);
+  crypto.getRandomValues(arr);
+  return Array.from(arr, b => chars[b % chars.length]).join("");
+}
+
+function genScanId() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz0123456789";
+  const arr = new Uint8Array(8);
+  crypto.getRandomValues(arr);
+  return Array.from(arr, b => chars[b % chars.length]).join("");
+}
+
+function genConfirmedKey() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz0123456789";
+  const arr = new Uint8Array(24);
+  crypto.getRandomValues(arr);
+  return Array.from(arr, b => chars[b % chars.length]).join("");
+}
+
+async function readBody(request) {
+  const text = await request.text();
+  try { return JSON.parse(text); } catch { return {}; }
+}
+
+// HTML 转义（防止 XSS）
+function escapeHtml(str) {
+  if (str == null) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+// JavaScript 字符串转义（用于模板中嵌入 JS 字符串）
+function escapeJsStr(str) {
+  if (str == null) return "";
+  return String(str)
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r")
+    .replace(/\f/g, "\\f")
+    .replace(/\v/g, "\\v")
+    .replace(/\t/g, "\\t");
+}
+
+// 构建前端确认页 URL（统一处理域名）
+function buildConfirmUrl(env, path = "confirm") {
+  const domain = env.CONFIRM_BASE_URL || env.PAGES_DOMAIN || "";
+  const base = domain.replace(/\/+$/, "");
+  return (base ? base + "/" : "") + path;
+}
+
+// 允许的前端域名列表（逗号分隔，从环境变量读取）
+function getAllowedOrigins(env) {
+  const val = env.ALLOWED_ORIGINS || "";
+  if (!val) return null;
+  return val.split(",").map(s => s.trim()).filter(Boolean);
+}
+
+function getOrigin(request, env) {
+  const origin = request.headers.get("Origin");
+  if (!origin) return null;
+  const allowed = getAllowedOrigins(env);
+  if (!allowed) return origin; // 未配置时保持向后兼容
+  return allowed.includes(origin) ? origin : null;
+}
+
+function json(data, status = 200, request = null, env = null) {
+  const headers = {
+    "Content-Type": "application/json; charset=utf-8",
+  };
+  if (request && env) {
+    const origin = getOrigin(request, env);
+    if (origin) headers["Access-Control-Allow-Origin"] = origin;
+  } else {
+    // 降级：保持向后兼容（仅在无法获取 Origin 时使用）
+    headers["Access-Control-Allow-Origin"] = "*";
+  }
+  return new Response(JSON.stringify(data), { status, headers });
+}
+
+function corsResponse(request, env) {
+  const origin = getOrigin(request, env);
+  const headers = {
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+  };
+  if (origin) headers["Access-Control-Allow-Origin"] = origin;
+  return new Response(null, { headers });
+}
+
+// ─────────────────────────────────────────────
+// 主路由
+// ─────────────────────────────────────────────
+async function handleRequest(request, env) {
+  const url = new URL(request.url);
+  const path = url.pathname;
+
+  // CORS 预检
+  if (request.method === "OPTIONS") {
+    return corsResponse(request, env);
+  }
+
+  // IP 地理位置检查（允许中国）
+  const country = request.headers.get("CF-IPCountry");
+  if (country && country !== "CN" && country !== "HK" && country !== "MO" && country !== "TW") {
+    return json({ detail: "仅限中国地区访问" }, 403, request, env);
+  }
+
+  // 首页 → 静态文件
+  if (path === "/" || path === "") {
+    const pagesDomain = env.CONFIRM_BASE_URL || env.PAGES_DOMAIN || "";
+    const base = pagesDomain.replace(/\/+$/, ""); // 去掉末尾斜杠
+    return Response.redirect((base ? base + "/" : "") + "index.html", 302);
+  }
+
+  // favicon
+  if (path === "/favicon.ico") {
+    return new Response(null, { status: 204 });
+  }
+
+  // 短链接 /s/c?k=xxx
+  if (path === "/s/c") {
+    const k = url.searchParams.get("k");
+    if (!k) return json({ detail: "无效链接" }, 400, request, env);
+    const pagesDomain = env.CONFIRM_BASE_URL || env.PAGES_DOMAIN || "";
+    const base = pagesDomain.replace(/\/+$/, "");
+    return Response.redirect((base ? base + "/" : "") + "confirm?key=" + encodeURIComponent(k), 302);
+  }
+
+  // API 路由
+  if (path === "/api/register" && request.method === "POST") {
+    return handleRegister(request, env);
+  }
+  if (path === "/api/notify" && request.method === "POST") {
+    return handleNotify(request, env);
+  }
+  if (path.startsWith("/api/status/key/") && request.method === "GET") {
+    const key = path.split("/")[4];
+    return handleStatusByKey(key, env);
+  }
+  if (path.startsWith("/api/status/") && request.method === "GET") {
+    const id = path.split("/")[3];
+    return handleStatus(id, env);
+  }
+  if (path.startsWith("/api/confirm/") && request.method === "POST") {
+    const key = path.split("/")[3];
+    return handleConfirm(key, env);
+  }
+  if (path.startsWith("/api/reject/") && request.method === "POST") {
+    const key = path.split("/")[3];
+    return handleReject(key, env);
+  }
+  if (path === "/api/confirm.html" && request.method === "GET") {
+    return handleConfirmPage(url, env);
+  }
+  if (path.startsWith("/api/history/") && request.method === "GET") {
+    const token = path.split("/")[3];
+    return handleHistory(token, env, url.searchParams);
+  }
+  if (path.startsWith("/api/scan/") && request.method === "GET") {
+    const scanId = path.split("/")[3];
+    return handleScan(scanId, env);
+  }
+  if (path.startsWith("/api/qr/") && request.method === "GET") {
+    const token = path.split("/")[3];
+    return handleQr(token, env);
+  }
+  if (path === "/api/config" && request.method === "GET") {
+    return handleConfig(env, request);
+  }
+  if (path === "/api/lookup" && request.method === "POST") {
+    return handleLookup(request, env);
+  }
+
+  return json({ detail: "Not Found" }, 404, request, env);
+}
+
+// ─────────────────────────────────────────────
+// POST /api/register
+// ─────────────────────────────────────────────
+async function handleRegister(request, env) {
+  const body = await readBody(request);
+  const { name, bark_key, license_plates = [] } = body;
+
+  if (!name || !bark_key) {
+    return json({ detail: "name, bark_key required" }, 400, request, env);
+  }
+  // Bark Key 格式校验：必须是 https:// 开头且包含有效路径
+  try {
+    const u = new URL(bark_key);
+    if (!["http:", "https:"].includes(u.protocol)) {
+      return json({ detail: "Bark Key 必须是 https:// 开头" }, 400, request, env);
+    }
+    if (!u.pathname || u.pathname === "/" || u.pathname.length < 2) {
+      return json({ detail: "Bark Key 格式不正确，请完整复制 Bark 给您的地址" }, 400, request, env);
+    }
+  } catch {
+    return json({ detail: "Bark Key 格式不正确，请完整复制 Bark 给您的地址" }, 400, request, env);
+  }
+  if (!license_plates || license_plates.length === 0) {
+    return json({ detail: "license_plates required（请至少填写一个车牌号）" }, 400, request, env);
+  }
+
+  const store = new KVStore(env.SCAN_KV);
+
+  const existing = await store.getOwnerByBarkKey(bark_key);
+  if (existing) {
+    return json({ detail: "该 Bark Key 已注册，请使用原有 Token" }, 400, request, env);
+  }
+  for (const plate of license_plates) {
+    const owner = await store.getOwnerByPlate(plate);
+    if (owner) {
+      return json({ detail: `车牌 ${plate} 已注册，请使用原有 Token` }, 400, request, env);
+    }
+  }
+
+  const token = genToken();
+  const scanId = genScanId();
+  const now = new Date().toISOString();
+
+  const owner = { token, name, bark_key, license_plates, created_at: now };
+  await store.setOwner(token, owner);
+  await store.setOwnerBarkKey(bark_key, token);
+  for (const plate of license_plates) {
+    await store.setOwnerPlate(plate, token);
+  }
+
+  const scan = { scan_id: scanId, owner_token: token, active: true, created_at: now };
+  await store.setScan(scanId, scan);
+
+  return json({ token, name, scan_id: scanId, message: "注册成功" }, 200, request, env);
+}
+
+// ─────────────────────────────────────────────
+// POST /api/notify
+// ─────────────────────────────────────────────
+async function handleNotify(request, env) {
+  const body = await readBody(request);
+  const {
+    token, scenario, message = "", urgency,
+    user_lat = 0, user_lon = 0, car_plate = "",
+    pending_id, // 延迟流程二次调用
+  } = body;
+
+  if (!token || !scenario) {
+    return json({ detail: "token, scenario required" }, 400, request, env);
+  }
+
+  const store = new KVStore(env.SCAN_KV);
+  const barkBaseUrl = env.BARK_BASE_URL || "https://api.day.app";
+
+  // ── 场景白名单校验 ──
+  if (!VALID_SCENARIOS.has(scenario)) {
+    return json({ detail: "无效场景，请从预设选项中选择" }, 400, request, env);
+  }
+
+  // ── 延迟流程二次调用 ──
+  if (pending_id) {
+    const notif = await store.getNotification(pending_id);
+    if (!notif) return json({ detail: "通知不存在" }, 404, request, env);
+    if (notif.status !== "waiting_confirmation") {
+      return json({ success: true, status: notif.status, message: "已处理" }, 200, request, env);
+    }
+    // 验证延迟时间，防止绕过 30 秒限制
+    if (notif.wait_until) {
+      const waitMs = new Date(notif.wait_until).getTime();
+      if (Date.now() < waitMs) {
+        const remainingSec = Math.ceil((waitMs - Date.now()) / 1000);
+        return json({ detail: `还需等待 ${remainingSec} 秒` }, 429, request, env);
+      }
+    }
+
+    const owner = await store.getOwner(token);
+    if (!owner) return json({ detail: "车主不存在" }, 404, request, env);
+
+    const urgencyLevel = urgency || SCENARIO_DEFAULT_URGENCY[scenario] || "default";
+    const plateInfo = car_plate ? `被挡:${car_plate}\n` : "";
+    const confirmUrl = `${buildConfirmUrl(env)}?key=${notif.confirmed_key}`;
+    const title = `🔔 ${scenario}`;
+    const text = `${plateInfo}请确认是否能够挪车\n\n确认码: ${notif.confirmed_key}\n链接: ${confirmUrl}`;
+    const ok = await pushBark(owner.bark_key, title, text, urgencyLevel, barkBaseUrl);
+
+    await store.setNotification(notif.id, {
+      ...notif,
+      status: ok ? "pending" : "failed",
+      success: ok,
+      submitted_at: notif.submitted_at || new Date().toISOString(),
+      requester_lat: parseFloat(user_lat) || 0,
+      requester_lon: parseFloat(user_lon) || 0,
+      car_plate,
+    });
+
+    if (ok) await store.incrDailyCount(token);
+    await store.appendHistory(token, {
+      id: notif.id, scenario, message,
+      pushed_at: new Date().toISOString(),
+      success: ok ? 1 : 0,
+      status: ok ? "pending" : "failed",
+    });
+
+    return json({
+      success: ok,
+      pending_id: String(notif.id),
+      message: ok ? "推送成功" : "推送失败，请稍后重试",
+    }, 200, request, env);
+  }
+
+  // ── 普通流程 ──
+  const owner = await store.getOwner(token);
+  if (!owner) return json({ detail: "车主不存在" }, 404, request, env);
+
+  const todayCnt = await store.getDailyCount(token);
+  if (todayCnt >= MAX_PER_DAY) {
+    return json({ detail: `今日推送次数已达上限（${MAX_PER_DAY}次），请明天再试` }, 429, request, env);
+  }
+
+  const urgencyLevel = urgency || SCENARIO_DEFAULT_URGENCY[scenario] || "default";
+  const userLat = parseFloat(user_lat) || 0;
+  const userLon = parseFloat(user_lon) || 0;
+  const now = new Date();
+
+  // ── 无位置：延迟 30 秒 ──
+  if (!userLat || !userLon) {
+    const confirmedKey = genConfirmedKey();
+    const nid = await store.nextNotifId();
+    const waitUntil = new Date(now.getTime() + NO_LOCATION_DELAY_MS).toISOString();
+
+    const notif = {
+      id: nid, token, scenario, message,
+      status: "waiting_confirmation",
+      confirmed_key: confirmedKey,
+      submitted_at: now.toISOString(),
+      wait_until: waitUntil,
+      requester_lat: 0, requester_lon: 0,
+      car_plate, success: false,
+    };
+    await store.setNotification(nid, notif);
+    await store.setNotificationKey(confirmedKey, nid);
+
+    return json({
+      success: true,
+      pending_id: String(nid),
+      can_send_at: waitUntil,
+      message: "提交成功，需等待 30 秒后才能发送通知（防止恶意骚扰）",
+    }, 200, request, env);
+  }
+
+  // 有位置：立即推送
+  const confirmedKey = genConfirmedKey();
+  const nid = await store.nextNotifId();
+  const plateInfo = car_plate ? `被挡:${car_plate}\n` : "";
+
+  // 尝试获取地址
+  let locationInfo = "";
+  if (userLat && userLon) {
+    const amapKey = env.AMAP_KEY;
+    if (amapKey) {
+      const address = await geocode(userLat, userLon, amapKey);
+      if (address) {
+        locationInfo = `位置：${address}\n`;
+      } else {
+        locationInfo = `位置：${userLat},${userLon}\n`;
+      }
+    } else {
+      locationInfo = `位置：${userLat},${userLon}\n`;
+    }
+  }
+
+  const confirmUrl = `${buildConfirmUrl(env)}?key=${confirmedKey}`;
+  const title = `🔔 ${scenario}`;
+  const text = `${plateInfo}${locationInfo}请确认是否能够挪车\n\n确认码: ${confirmedKey}\n链接: ${confirmUrl}`;
+  const ok = await pushBark(owner.bark_key, title, text, urgencyLevel, barkBaseUrl);
+
+  const notif = {
+    id: nid, token, scenario, message,
+    status: ok ? "pending" : "failed",
+    confirmed_key: confirmedKey,
+    submitted_at: now.toISOString(),
+    wait_until: null,
+    requester_lat: userLat,
+    requester_lon: userLon,
+    car_plate,
+    success: ok,
+  };
+  await store.setNotification(nid, notif);
+  await store.setNotificationKey(confirmedKey, nid);
+
+  if (ok) await store.incrDailyCount(token);
+  await store.appendHistory(token, {
+    id: nid, scenario, message,
+    pushed_at: now.toISOString(),
+    success: ok ? 1 : 0,
+    status: ok ? "pending" : "failed",
+  });
+
+  return json({
+    success: ok,
+    pending_id: String(nid),
+    message: ok ? "推送成功" : "推送失败，请稍后重试",
+  }, 200, request, env);
+}
+
+// ─────────────────────────────────────────────
+// GET /api/status/{id}
+// ─────────────────────────────────────────────
+async function handleStatus(id, env) {
+  const store = new KVStore(env.SCAN_KV);
+  const barkBaseUrl = env.BARK_BASE_URL || "https://api.day.app";
+
+  const notif = await store.getNotification(id);
+  if (!notif) return json({ detail: "通知不存在" }, 404, null, env);
+
+  // 无位置延迟流程
+  if (notif.status === "waiting_confirmation" && notif.wait_until) {
+    const now = Date.now();
+    const waitMs = new Date(notif.wait_until).getTime();
+    if (now >= waitMs) {
+      // 到时间，触发 Bark
+      const owner = await store.getOwner(notif.token);
+      if (owner) {
+        const urgencyLevel = SCENARIO_DEFAULT_URGENCY[notif.scenario] || "default";
+        const plateInfo = notif.car_plate ? `被挡:${notif.car_plate}\n` : "";
+        let locationInfo = "";
+        if (notif.requester_lat && notif.requester_lon) {
+          const amapKey = env.AMAP_KEY;
+          if (amapKey) {
+            const address = await geocode(notif.requester_lat, notif.requester_lon, amapKey);
+            if (address) {
+              locationInfo = `位置：${address}\n`;
+            } else {
+              locationInfo = `位置：${notif.requester_lat},${notif.requester_lon}\n`;
+            }
+          } else {
+            locationInfo = `位置：${notif.requester_lat},${notif.requester_lon}\n`;
+          }
+        }
+        const confirmUrl = `${buildConfirmUrl(env)}?key=${notif.confirmed_key}`;
+        const title = `🔔 ${notif.scenario}`;
+        const text = `${plateInfo}${locationInfo}请确认是否能够挪车\n\n确认码: ${notif.confirmed_key}\n链接: ${confirmUrl}`;
+        const ok = await pushBark(owner.bark_key, title, text, urgencyLevel, barkBaseUrl);
+
+        await store.setNotification(id, {
+          ...notif,
+          status: ok ? "pending" : "failed",
+          success: ok,
+          submitted_at: notif.submitted_at || new Date().toISOString(),
+        });
+
+        if (ok) await store.incrDailyCount(notif.token);
+        await store.appendHistory(notif.token, {
+          id, scenario: notif.scenario, message: notif.message,
+          pushed_at: new Date().toISOString(),
+          success: ok ? 1 : 0,
+          status: ok ? "pending" : "failed",
+        });
+      }
+    } else {
+      const remaining = Math.ceil((waitMs - now) / 1000);
+      return json({
+        status: "waiting_confirmation",
+        scenario: notif.scenario,
+        message: notif.message,
+        submitted_at: notif.submitted_at || "",
+        car_plate: notif.car_plate || "",
+        can_send_at: notif.wait_until,
+        remaining_seconds: remaining,
+      }, 200, null, env);
+    }
+  }
+
+  return json({
+    status: notif.status,
+    scenario: notif.scenario,
+    message: notif.message,
+    submitted_at: notif.submitted_at || "",
+    car_plate: notif.car_plate || "",
+    requester_lat: notif.requester_lat || 0,
+    requester_lon: notif.requester_lon || 0,
+  }, 200, null, env);
+}
+
+// ─────────────────────────────────────────────
+// GET /api/status/key/{key}
+// ─────────────────────────────────────────────
+async function handleStatusByKey(key, env) {
+  const store = new KVStore(env.SCAN_KV);
+  const notif = await store.getNotificationByKey(key);
+  if (!notif) return json({ status: "not_found" }, 404, null, env);
+  return json({
+    status: notif.status,
+    scenario: notif.scenario || "",
+    message: notif.message || "",
+    submitted_at: notif.submitted_at || "",
+    car_plate: notif.car_plate || "",
+  }, 200, null, env);
+}
+
+// ─────────────────────────────────────────────
+// POST /api/confirm/{key}
+// ─────────────────────────────────────────────
+async function handleConfirm(key, env) {
+  const store = new KVStore(env.SCAN_KV);
+  const barkBaseUrl = env.BARK_BASE_URL || "https://api.day.app";
+
+  const notif = await store.getNotificationByKey(key);
+  if (!notif) return json({ detail: "确认链接无效或已过期" }, 404, null, env);
+  if (notif.status === "confirmed" || notif.status === "rejected") {
+    return json({ ok: true, message: "已经处理过了" }, 200, null, env);
+  }
+
+  await store.setNotificationWithTTL(notif.id, {
+    ...notif,
+    status: "confirmed",
+    confirmed_at: new Date().toISOString(),
+  }, 86400); // 24小时后过期，释放存储空间
+  await store.deleteNotificationKey(key);
+
+  // 二次推送告知扫码者
+  const owner = await store.getOwner(notif.token);
+  if (owner && owner.bark_key) {
+    const locStr = (notif.requester_lat && notif.requester_lon)
+      ? `\n\n📍 被挡者位置：https://maps.apple.com/?q=&ll=${notif.requester_lat},${notif.requester_lon}`
+      : "";
+    await pushBark(
+      owner.bark_key,
+      "✅ 车主已确认挪车",
+      `车主(${owner.name || "某车主"})已确认会尽快挪车，请稍候。${locStr}`,
+      "low",
+      barkBaseUrl
+    );
+  }
+
+  return json({ ok: true, message: "确认成功" }, 200, null, env);
+}
+
+// ─────────────────────────────────────────────
+// POST /api/reject/{key}
+// ─────────────────────────────────────────────
+async function handleReject(key, env) {
+  const store = new KVStore(env.SCAN_KV);
+
+  const notif = await store.getNotificationByKey(key);
+  if (!notif) return json({ detail: "确认链接无效或已过期" }, 404, null, env);
+  if (notif.status === "confirmed" || notif.status === "rejected") {
+    return json({ ok: true, message: "已经处理过了" }, 200, null, env);
+  }
+
+  await store.setNotificationWithTTL(notif.id, {
+    ...notif,
+    status: "rejected",
+    confirmed_at: new Date().toISOString(),
+  }, 86400); // 24小时后过期
+  await store.deleteNotificationKey(key);
+
+  return json({ ok: true, message: "已拒绝" }, 200, null, env);
+}
+
+// ─────────────────────────────────────────────
+// GET /api/confirm.html（车主确认页）
+// ─────────────────────────────────────────────
+async function handleConfirmPage(url, env) {
+  const key = url.searchParams.get("key");
+  if (!key) {
+    return new Response("<h1>无效链接</h1>", { status: 400, headers: { "Content-Type": "text/html" } });
+  }
+
+  const store = new KVStore(env.SCAN_KV);
+  const notif = await store.getNotificationByKey(key);
+  if (!notif) {
+    return new Response("<h1>链接已失效或不存在</h1>", { status: 404, headers: { "Content-Type": "text/html" } });
+  }
+
+  const scenario = escapeHtml(notif.scenario || "");
+  const message = escapeHtml(notif.message || "");
+  const reqLat = notif.requester_lat || 0;
+  const reqLon = notif.requester_lon || 0;
+  const carPlate = escapeHtml(notif.car_plate || "");
+  const status = notif.status || "pending";
+  const statusLabel = {
+    waiting_confirmation: "等待确认",
+    pending: "已通知",
+    confirmed: "已确认",
+    rejected: "已拒绝",
+    failed: "发送失败"
+  }[status] || status;
+
+  const locHtml = (reqLat && reqLon)
+    ? `<div class="owner-loc">📍 对方位置：<a href="https://maps.apple.com/?q=&ll=${reqLat},${reqLon}" target="_blank">查看地图</a></div>`
+    : "";
+
+  const isDone = status === "confirmed" || status === "rejected" || status === "failed";
+  const actionHtml = isDone
+    ? `<p style="text-align:center;color:#888;font-size:15px;">此请求已处理完毕</p>`
+    : `<div class="action-btns">
+        <button class="btn btn-confirm" id="confirmBtn" onclick="doConfirm()">✅ 确认挪车</button>
+        <button class="btn btn-reject" id="rejectBtn" onclick="doReject()">❌ 暂时不便</button>
+       </div>`;
+
+  const html = `<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>挪车确认 - 扫码挪车</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:#fff;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,0.15);padding:40px 36px;width:100%;max-width:440px}
+.hero{text-align:center;margin-bottom:28px}
+.hero-icon{font-size:60px;margin-bottom:12px}
+h1{font-size:24px;text-align:center;margin-bottom:8px;color:#1a1a2e;font-weight:700}
+.subtitle{text-align:center;color:#888;font-size:15px}
+.info-box{background:#f8f7ff;border:1.5px solid #e0dcff;border-radius:14px;padding:16px;margin-bottom:20px}
+.info-row{display:flex;justify-content:space-between;font-size:14px;color:#555;margin-bottom:8px}
+.info-row:last-child{margin-bottom:0}
+.info-label{font-weight:600;color:#888}
+.status-badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:13px;font-weight:600}
+.status-waiting,.status-pending{background:#fff3cd;color:#856404}
+.status-confirmed{background:#d4edda;color:#155724}
+.status-rejected,.status-failed{background:#f8d7da;color:#721c24}
+.action-btns{display:flex;gap:12px;margin-top:24px}
+.btn{flex:1;padding:14px;border:none;border-radius:14px;font-size:16px;font-weight:600;cursor:pointer;transition:all 0.2s}
+.btn-confirm{background:linear-gradient(135deg,#28a745,#20c997);color:#fff}
+.btn-reject{background:#f0f0f0;color:#555}
+.btn:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,0.15)}
+.btn:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+.msg{text-align:center;margin-top:16px;font-size:14px;font-weight:500}
+.msg.ok{color:#28a745}
+.msg.err{color:#dc3545}
+.owner-loc{background:#e8f5e9;border:1px solid #c8e6c9;border-radius:10px;padding:12px;margin-top:12px;font-size:13px;color:#2e7d32}
+.owner-loc a{color:#2e7d32}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="hero"><div class="hero-icon">🚗</div><h1>有人需要您挪车</h1><p class="subtitle">请确认是否方便挪车</p></div>
+  <div class="info-box">
+    <div class="info-row"><span class="info-label">场景</span><span>${scenario}</span></div>
+    <div class="info-row"><span class="info-label">说明</span><span>${message}</span></div>
+    <div class="info-row"><span class="info-label">状态</span><span class="status-badge status-${status}" id="statusBadge">${statusLabel}</span></div>
+    ${carPlate ? `<div class="info-row"><span class="info-label">被挡车牌</span><span style="font-weight:700;color:#667eea">${carPlate}</span></div>` : ""}
+    ${locHtml}
+  </div>
+  <div id="actionArea">${actionHtml}</div>
+  <div class="msg" id="msg"></div>
+</div>
+<script>
+const key = "${escapeJsStr(key)}";
+async function doConfirm(){
+  setBtns(false);
+  try {
+    const resp = await fetch('/api/confirm/' + key, {method:'POST'});
+    const data = await resp.json();
+    if(resp.ok){
+      document.getElementById('statusBadge').textContent='已确认';
+      document.getElementById('statusBadge').className='status-badge status-confirmed';
+      document.getElementById('actionArea').innerHTML='<p style="text-align:center;color:#28a745;font-size:16px;font-weight:600;">✅ 已确认！对方会收到您的位置信息</p>';
+    } else {
+      document.getElementById('msg').textContent='操作失败：'+(data.detail||'');
+      document.getElementById('msg').className='msg err';
+      setBtns(true);
+    }
+  } catch(e){
+    document.getElementById('msg').textContent='网络错误，请稍后重试';
+    document.getElementById('msg').className='msg err';
+    setBtns(true);
+  }
+}
+async function doReject(){
+  setBtns(false);
+  try {
+    const resp = await fetch('/api/reject/' + key, {method:'POST'});
+    const data = await resp.json();
+    if(resp.ok){
+      document.getElementById('statusBadge').textContent='已拒绝';
+      document.getElementById('statusBadge').className='status-badge status-rejected';
+      document.getElementById('actionArea').innerHTML='<p style="text-align:center;color:#888;font-size:16px;font-weight:600;">❌ 已拒绝通知</p>';
+    } else {
+      document.getElementById('msg').textContent='操作失败：'+(data.detail||'');
+      document.getElementById('msg').className='msg err';
+      setBtns(true);
+    }
+  } catch(e){
+    document.getElementById('msg').textContent='网络错误，请稍后重试';
+    document.getElementById('msg').className='msg err';
+    setBtns(true);
+  }
+}
+function setBtns(enabled){
+  const cb=document.getElementById('confirmBtn'),rb=document.getElementById('rejectBtn');
+  if(cb)cb.disabled=!enabled;
+  if(rb)rb.disabled=!enabled;
+}
+</script>
+</body>
+</html>`;
+
+  return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+}
+
+// ─────────────────────────────────────────────
+// GET /api/history/{token}
+// ─────────────────────────────────────────────
+async function handleHistory(token, env, searchParams) {
+  const store = new KVStore(env.SCAN_KV);
+  const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+  const limit = Math.min(50, Math.max(1, parseInt(searchParams.get("limit") || "20", 10)));
+  const all = await store.getHistory(token);
+  const total = all.length;
+  const start = (page - 1) * limit;
+  const rows = all.slice(start, start + limit);
+  return json({
+    data: rows.map(r => ({
+      id: r.id,
+      scenario: r.scenario,
+      message: r.message,
+      pushed_at: r.pushed_at,
+      success: r.success,
+    })),
+    pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+  }, 200, null, env);
+}
+
+// ─────────────────────────────────────────────
+// GET /api/scan/{scanId}
+// ─────────────────────────────────────────────
+async function handleScan(scanId, env) {
+  const store = new KVStore(env.SCAN_KV);
+  const scan = await store.getScan(scanId);
+  if (!scan || !scan.active) return json({ detail: "二维码不存在或已禁用" }, 404, null, env);
+  const owner = await store.getOwner(scan.owner_token);
+  if (!owner) return json({ detail: "车主不存在" }, 404, null, env);
+  return json({
+    token: owner.token,
+    name: owner.name,
+    license_plates: owner.license_plates || [],
+    latitude: owner.latitude || 0,
+    longitude: owner.longitude || 0,
+  }, 200, null, env);
+}
+
+// ─────────────────────────────────────────────
+// GET /api/qr/{token}
+// ─────────────────────────────────────────────
+async function handleQr(token, env) {
+  const store = new KVStore(env.SCAN_KV);
+  const owner = await store.getOwner(token);
+  if (!owner) return json({ detail: "车主不存在" }, 404, null, env);
+  return json({
+    token: owner.token,
+    name: owner.name,
+    license_plates: owner.license_plates || [],
+    latitude: owner.latitude || 0,
+    longitude: owner.longitude || 0,
+  }, 200, null, env);
+}
+
+// ─────────────────────────────────────────────
+// POST /api/lookup  — 用 Bark Key 找回 Token
+// ─────────────────────────────────────────────
+async function handleLookup(request, env) {
+  const body = await readBody(request);
+  const { bark_key } = body;
+  if (!bark_key) return json({ detail: "bark_key required" }, 400, request, env);
+  const store = new KVStore(env.SCAN_KV);
+  const owner = await store.getOwnerByBarkKey(bark_key);
+  if (!owner) return json({ detail: "该 Bark Key 未注册" }, 404, request, env);
+  return json({ token: owner.token, name: owner.name }, 200, request, env);
+}
+
+// ─────────────────────────────────────────────
+// GET /api/config  — 暴露给前端的公开配置
+// ─────────────────────────────────────────────
+async function handleConfig(env, request) {
+  const origin = getOrigin(request, env);
+  const headers = {
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "public, max-age=3600",
+  };
+  if (origin) headers["Access-Control-Allow-Origin"] = origin;
+  return new Response(JSON.stringify({
+    apiUrl: env.API_URL || "",
+    amapKey: env.AMAP_KEY || "",
+  }), { status: 200, headers });
+}
+
+// ─────────────────────────────────────────────
+// Worker 入口
+// ─────────────────────────────────────────────
+export default {
+  async fetch(request, env, ctx) {
+    try {
+      return await handleRequest(request, env);
+    } catch (e) {
+      return new Response("Internal Error: " + (e.message || e), { status: 500 });
+    }
+  }
+};
+

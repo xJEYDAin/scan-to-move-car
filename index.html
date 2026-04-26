@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>扫码挪车</title>
+<link rel="stylesheet" href="style.css">
+<!-- 公共组件样式已移至 style.css -->
+</head>
+<body>
+<div class="card">
+  <!-- Loading 遮罩 -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loadingText">发送中...</div>
+    <button class="retry-btn" id="retryBtn" onclick="doSubmit()">🔄 重试</button>
+  </div>
+
+  <!-- 地区限制提示 -->
+  <div class="region-block" id="regionBlock">
+    <div class="icon">🚫</div>
+    <h2>仅对中国大陆用户开放</h2>
+    <p>抱歉，本服务仅对中国大陆用户开放。<br>请在大陆地区访问使用。</p>
+  </div>
+
+  <!-- 表单视图 -->
+  <div id="formView">
+    <div class="hero">
+      <div class="hero-icon">🚗</div>
+      <h1>车主，这里有人需要挪车</h1>
+      <p class="subtitle">扫码一键通知，无需拨打电话</p>
+    </div>
+    <form id="notifyForm">
+      <label>请选择情况</label>
+      <div class="scenarios" id="scenarios">
+        <button type="button" class="scenario-btn active" data-val="小区">🏠 小区</button>
+        <button type="button" class="scenario-btn" data-val="商场">🛒 商场</button>
+        <button type="button" class="scenario-btn" data-val="路边">🅿️ 路边</button>
+        <button type="button" class="scenario-btn" data-val="停车场出口">🏎️ 出口</button>
+        <button type="button" class="scenario-btn" data-val="地下车库">🏗️ 车库</button>
+        <button type="button" class="scenario-btn" data-val="医院/学校">🏥 医院</button>
+        <button type="button" class="scenario-btn" data-val="景区">🏖️ 景区</button>
+        <button type="button" class="scenario-btn" data-val="加油站">⛽ 加油</button>
+        <button type="button" class="scenario-btn" data-val="其他">📍 其他</button>
+      </div>
+      <input type="hidden" id="scenario" value="小区">
+
+      <!-- 紧急程度选择 -->
+      <div class="form-group">
+        <label>通知紧急程度</label>
+        <div class="urgency-group" id="urgencyGroup">
+          <button type="button" class="urgency-btn" data-val="critical" title="堵住出口等紧急情况">🔴 紧急</button>
+          <button type="button" class="urgency-btn active-high" data-val="high" title="影响他人停车">🟡 重要</button>
+          <button type="button" class="urgency-btn" data-val="warning" title="轻微挡道">🟢 警告</button>
+        </div>
+        <input type="hidden" id="urgency" value="high">
+      </div>
+
+      <!-- 位置输入 -->
+      <div class="form-group" id="locationGroup">
+        <label>您的位置（必填，用于告知车主）</label>
+        <button type="button" class="location-btn" id="getLocBtn">📍 获取当前位置</button>
+        <p class="hint" id="locHint">获取位置后才能提交</p>
+        <input type="hidden" id="userLat" value="">
+        <input type="hidden" id="userLon" value="">
+      </div>
+
+      <!-- 车牌号 - 新键盘组件 -->
+      <div class="form-group" id="carPlateGroup">
+        <span class="plate-label" style="display:block;font-size:14px;color:#444;font-weight:600;margin-bottom:8px;">车牌号（必填）</span>
+
+        <div class="plate-keyboard-wrapper" id="plateWrapper">
+          <!-- 新能源切换 -->
+          <div class="ev-toggle-row">
+            <label>
+              <input type="checkbox" id="evToggle"> ☑️ 新能源车牌
+            </label>
+          </div>
+
+          <!-- 车牌格子行 -->
+          <div class="plate-grid" id="plateGrid">
+            <div class="plate-char-cell province-cell empty active" data-index="0" id="cell0">省</div>
+            <div class="plate-char-cell letter-cell empty" data-index="1" id="cell1">字</div>
+            <span class="plate-dot-sep">·</span>
+            <div class="plate-char-cell empty" data-index="2" id="cell2"></div>
+            <div class="plate-char-cell empty" data-index="3" id="cell3"></div>
+            <div class="plate-char-cell empty" data-index="4" id="cell4"></div>
+            <div class="plate-char-cell empty" data-index="5" id="cell5"></div>
+            <div class="plate-char-cell empty" data-index="6" id="cell6"></div>
+            <div class="plate-char-cell ev-cell empty" data-index="7" id="cell7" style="display:none;"></div>
+          </div>
+
+          <!-- 虚拟键盘（固定在底部） -->
+          <div class="virt-keyboard" id="virtKeyboard">
+            <div class="kb-tabs">
+              <button type="button" class="kb-tab active" id="kbTabProvince">省份</button>
+              <button type="button" class="kb-tab" id="kbTabLetter">字母</button>
+              <button type="button" class="kb-tab" id="kbTabDigit">数字</button>
+            </div>
+
+            <!-- 省份键盘 -->
+            <div class="kb-row" id="kbRowP0"></div>
+            <div class="kb-row" id="kbRowP1"></div>
+            <div class="kb-row" id="kbRowP2"></div>
+
+            <!-- 字母键盘 -->
+            <div class="kb-row" id="kbRowL0" style="display:none;"></div>
+            <div class="kb-row" id="kbRowL1" style="display:none;"></div>
+            <div class="kb-row" id="kbRowL2" style="display:none;"></div>
+
+            <!-- 数字键盘 -->
+            <div class="kb-row" id="kbRowD0" style="display:none;"></div>
+            <div class="kb-row" id="kbRowD1" style="display:none;"></div>
+
+            <!-- 功能键 -->
+            <div class="kb-row">
+              <button type="button" class="kb-key special" id="kbHide">收起</button>
+              <button type="button" class="kb-key delete-key" id="kbDelete">⌫ 删除</button>
+              <button type="button" class="kb-key confirm-key" id="kbConfirm">完成</button>
+            </div>
+          </div>
+        </div>
+
+        <p class="hint" id="plateHint" style="margin-top:6px;">请点击格子输入车牌号</p>
+      </div>
+
+      <div class="form-group">
+        <label>情况说明（必选）</label>
+        <div class="msg-btns" id="msgBtns">
+          <button type="button" class="msg-btn" data-msg="堵住出口了，麻烦挪车">堵住出口了，麻烦挪车</button>
+          <button type="button" class="msg-btn" data-msg="占用我的车位了">占用我的车位了</button>
+          <button type="button" class="msg-btn" data-msg="挡住去路了">挡住去路了</button>
+          <button type="button" class="msg-btn" data-msg="临时挡道，请配合">临时挡道，请配合</button>
+        </div>
+      </div>
+      <button type="submit" class="submit-btn" id="submitBtn">🔔 通知车主挪车</button>
+      <div class="msg" id="msg"></div>
+    </form>
+  </div>
+
+  <!-- 结果视图（已推送） -->
+  <div class="success-view" id="successView">
+    <div class="icon">✅</div>
+    <h2>已通知车主</h2>
+    <p>车主已收到推送通知<br>请稍候片刻，挪车事宜将尽快处理</p>
+    <p class="cooldown-tip" id="cooldownTip" style="display:none;"></p>
+    <button type="button" class="back-btn" id="backToFormBtn" style="margin-top:16px;display:none;">返回</button>
+  </div>
+
+  <!-- 等待确认视图（无位置延迟 30 秒） -->
+  <div class="waiting-view" id="waitingView">
+    <div class="icon" id="waitingIcon">⏳</div>
+    <h2 id="waitingTitle">等待发送...</h2>
+    <p id="waitingDesc">为防止恶意骚扰，需等待 30 秒后才能发送通知</p>
+    <div class="countdown-wrapper" id="countdownWrapper">
+      <div class="countdown-ring" id="countdownRing">
+        <svg width="120" height="120" viewBox="0 0 120 120">
+          <circle class="countdown-ring-bg" cx="60" cy="60" r="52"/>
+          <circle class="countdown-ring-progress" id="countdownProgress" cx="60" cy="60" r="52"
+            stroke-dasharray="326.73" stroke-dashoffset="0"/>
+        </svg>
+        <div class="countdown-ring-text" id="countdownTimer">30</div>
+      </div>
+      <div class="countdown-label">秒后可发送</div>
+    </div>
+    <p id="waitingTip" style="color:#999;font-size:13px;margin-top:8px;"></p>
+    <button type="button" class="submit-btn" id="sendAfterCountdownBtn" style="display:none;margin-top:16px;" onclick="doSendAfterCountdown()">🔔 立即通知车主</button>
+    <button type="button" class="back-btn" style="margin-top:12px;" onclick="backToForm()">返回修改</button>
+  </div>
+
+  <!-- 车主已确认视图 -->
+  <div class="success-view" id="confirmedView" style="display:none;">
+    <div class="icon">✅</div>
+    <h2>车主已确认！</h2>
+    <p>车主会尽快挪车，请稍候</p>
+    <div class="owner-location" id="ownerLocationBox" style="display:none;">
+      📍 车主位置：<a id="ownerMapLink" href="#" target="_blank">在地图上查看</a>
+    </div>
+    <button type="button" class="back-btn" style="margin-top:20px;" onclick="closeWindow()">返回</button>
+  </div>
+</div>
+
+<script src="common.js"></script>
+<script>
+const API_BASE = 'https://api.movecar.eggtata.top';
+const params = new URLSearchParams(window.location.search);
+const scanId = params.get('scan_id');
+const token = params.get('token');
+let ownerToken = token || '';
+let carLat = 0, carLon = 0;
+let currentPendingId = null;
+let currentUrgency = 'high';
+let savedMsg = '';
+let savedScenario = '小区';
+
+// ── 车牌键盘数据 ──
+const PROVINCES = ['京','津','沪','渝','冀','豫','云','辽','黑','湘','皖','鲁','新','苏','浙','赣','鄂','桂','甘','晋','蒙','陕','吉','闽','贵','粤','青','藏','川','宁','琼'];
+const LETTERS = 'ABCDEFGHJKLMNPQRSTUVWXYZ'.split('');
+const DIGITS  = '0123456789'.split('');
+
+// 车牌状态
+let plateData = ['', '', '', '', '', '', '', ''];
+let activeIndex = 0;
+let isEvMode = false;
+let keyboardShown = false;
+
+const TOTAL_CHARS   = 8;
+const REGULAR_COUNT = 7; // 粤B12345
+
+// ── 初始化键盘 DOM ──
+function buildKeyboard() {
+  const pRows = [PROVINCES.slice(0,10), PROVINCES.slice(10,20), PROVINCES.slice(20,31)];
+  pRows.forEach((row, ri) => {
+    const el = document.getElementById('kbRowP' + ri);
+    el.innerHTML = '';
+    row.forEach(p => {
+      const btn = makeKbBtn(p, 'province-key', () => onKey(p));
+      el.appendChild(btn);
+    });
+  });
+  const lRows = [LETTERS.slice(0,9), LETTERS.slice(9,18), LETTERS.slice(18,26)];
+  lRows.forEach((row, ri) => {
+    const el = document.getElementById('kbRowL' + ri);
+    el.innerHTML = '';
+    row.forEach(l => {
+      const btn = makeKbBtn(l, 'letter-key', () => onKey(l));
+      el.appendChild(btn);
+    });
+  });
+  const dRows = [DIGITS.slice(0,5), DIGITS.slice(5,10)];
+  dRows.forEach((row, ri) => {
+    const el = document.getElementById('kbRowD' + ri);
+    el.innerHTML = '';
+    row.forEach(d => {
+      const btn = makeKbBtn(d, 'digit-key', () => onKey(d));
+      el.appendChild(btn);
+    });
+  });
+}
+
+function makeKbBtn(text, cls, handler) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'kb-key ' + cls;
+  btn.textContent = text;
+  btn.addEventListener('click', handler);
+  return btn;
+}
+
+// ── 键盘标签切换 ──
+function showKbTab(tab) {
+  ['P','L','D'].forEach(t => {
+    for (let r = 0; r < 3; r++) {
+      const el = document.getElementById('kbRow' + t + r);
+      if (el) el.style.display = 'none';
+    }
+  });
+  document.getElementById('kbTabProvince').classList.remove('active');
+  document.getElementById('kbTabLetter').classList.remove('active');
+  document.getElementById('kbTabDigit').classList.remove('active');
+
+  if (tab === 'province') {
+    for (let r = 0; r < 3; r++) document.getElementById('kbRowP'+r).style.display = 'flex';
+    document.getElementById('kbTabProvince').classList.add('active');
+  } else if (tab === 'letter') {
+    for (let r = 0; r < 3; r++) document.getElementById('kbRowL'+r).style.display = 'flex';
+    document.getElementById('kbTabLetter').classList.add('active');
+  } else if (tab === 'digit') {
+    for (let r = 0; r < 2; r++) document.getElementById('kbRowD'+r).style.display = 'flex';
+    document.getElementById('kbTabDigit').classList.add('active');
+  }
+}
+
+// ── 按键处理 ──
+function onKey(char) {
+  const maxIdx = isEvMode ? TOTAL_CHARS : REGULAR_COUNT;
+  if (activeIndex >= maxIdx) return;
+  plateData[activeIndex] = char;
+  updatePlateDisplay();
+  activeIndex++;
+  updateActiveCell();
+  updatePlateHint();
+
+  if (activeIndex < maxIdx) {
+    // 智能切键盘：自动切换到下一位对应的键盘
+    if (activeIndex === 1) showKbTab('letter');
+    else if (activeIndex >= 2) showKbTab('digit');
+  }
+}
+
+// ── 删除 ──
+function onDelete() {
+  if (activeIndex > 0) {
+    activeIndex--;
+    plateData[activeIndex] = '';
+    updatePlateDisplay();
+    updateActiveCell();
+    updatePlateHint();
+  }
+}
+
+// ── 更新格子显示 ──
+function updatePlateDisplay() {
+  for (let i = 0; i < TOTAL_CHARS; i++) {
+    const cell = document.getElementById('cell' + i);
+    if (!cell) continue;
+    const visible = i < REGULAR_COUNT || (i >= REGULAR_COUNT && isEvMode);
+    cell.style.display = visible ? '' : 'none';
+
+    if (i === 0 || i === 1) {
+      if (plateData[i]) {
+        cell.textContent = plateData[i];
+        cell.classList.remove('empty');
+        cell.classList.add('filled');
+      } else {
+        cell.textContent = i === 0 ? '省' : '字';
+        cell.classList.add('empty');
+        cell.classList.remove('filled');
+      }
+    } else {
+      cell.textContent = plateData[i] || '';
+      if (plateData[i]) {
+        cell.classList.remove('empty');
+        cell.classList.add('filled');
+      } else {
+        cell.classList.add('empty');
+        cell.classList.remove('filled');
+      }
+    }
+  }
+}
+
+// ── 更新活跃格子 ──
+function updateActiveCell() {
+  const maxIdx = isEvMode ? TOTAL_CHARS : REGULAR_COUNT;
+  for (let i = 0; i < TOTAL_CHARS; i++) {
+    const cell = document.getElementById('cell' + i);
+    if (!cell) continue;
+    const visible = i < REGULAR_COUNT || (i >= REGULAR_COUNT && isEvMode);
+    if (!visible) { cell.classList.remove('active'); continue; }
+    if (i === activeIndex && i < maxIdx) {
+      cell.classList.add('active');
+    } else {
+      cell.classList.remove('active');
+    }
+  }
+}
+
+// ── 点击格子 ──
+document.querySelectorAll('.plate-char-cell').forEach(cell => {
+  cell.addEventListener('click', e => {
+    e.stopPropagation();
+    const idx = parseInt(cell.dataset.index);
+    const maxIdx = isEvMode ? TOTAL_CHARS : REGULAR_COUNT;
+    if (idx >= maxIdx) return;
+    activeIndex = idx;
+    updateActiveCell();
+    showKeyboard();
+    if (idx === 0) showKbTab('province');
+    else if (idx === 1) showKbTab('letter');
+    else showKbTab('digit');
+  });
+});
+
+// ── 显示键盘 ──
+function showKeyboard() {
+  const kb = document.getElementById('virtKeyboard');
+  kb.classList.add('show');
+  document.body.classList.add('keyboard-open');
+  keyboardShown = true;
+  showKbTab('province');
+  // 滚动车牌格到可视区域，避免被键盘遮挡
+  const activeCell = document.querySelector('.plate-char-cell.active');
+  if (activeCell) {
+    setTimeout(() => activeCell.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+  }
+  if (navigator.userAgent.match(/iphone|ipad/i)) {
+    kb.style.paddingBottom = 'max(8px, env(safe-area-inset-bottom))';
+  }
+}
+
+// ── 隐藏键盘 ──
+function hideKeyboard() {
+  document.getElementById('virtKeyboard').classList.remove('show');
+  document.body.classList.remove('keyboard-open');
+  keyboardShown = false;
+}
+
+// ── 点击空白隐藏键盘 ──
+document.addEventListener('click', e => {
+  const wrapper = document.getElementById('plateWrapper');
+  if (keyboardShown && wrapper && !wrapper.contains(e.target)) {
+    hideKeyboard();
+  }
+});
+
+// ── 键盘标签 ──
+document.getElementById('kbTabProvince').addEventListener('click', () => showKbTab('province'));
+document.getElementById('kbTabLetter').addEventListener('click', () => showKbTab('letter'));
+document.getElementById('kbTabDigit').addEventListener('click', () => showKbTab('digit'));
+
+// ── 键盘功能键 ──
+document.getElementById('kbDelete').addEventListener('click', onDelete);
+document.getElementById('kbHide').addEventListener('click', hideKeyboard);
+document.getElementById('kbConfirm').addEventListener('click', () => {
+  updatePlateHint();
+  hideKeyboard();
+});
+
+// ── 新能源切换 ──
+document.getElementById('evToggle').addEventListener('change', e => {
+  isEvMode = e.target.checked;
+  const evCell = document.getElementById('cell7');
+  if (isEvMode) {
+    evCell.style.display = '';
+  } else {
+    evCell.style.display = 'none';
+    plateData[7] = '';
+    if (activeIndex >= 7) activeIndex = 6;
+  }
+  updatePlateDisplay();
+  updateActiveCell();
+});
+
+// ── 车牌提示更新 ──
+function updatePlateHint() {
+  const maxIdx = isEvMode ? TOTAL_CHARS : REGULAR_COUNT;
+  const filled = plateData.slice(0, maxIdx).filter(v => v).length;
+  const total = maxIdx;
+  const hint = document.getElementById('plateHint');
+  const plate = getCarPlate();
+  if (filled === 0) {
+    hint.textContent = '请点击格子输入车牌号';
+    hint.style.color = '#999';
+  } else if (filled < total) {
+    hint.textContent = '已填写 ' + filled + '/' + total + ' 位';
+    hint.style.color = '#667eea';
+  } else {
+    hint.textContent = '✅ 车牌：' + plate;
+    hint.style.color = '#28a745';
+  }
+}
+
+// ── 获取车牌号 ──
+function getCarPlate() {
+  const maxIdx = isEvMode ? TOTAL_CHARS : REGULAR_COUNT;
+  return plateData.slice(0, maxIdx).join('');
+}
+
+// ── 初始化 ──
+buildKeyboard();
+updatePlateDisplay();
+updateActiveCell();
+updatePlateHint();
+
+// ── 紧急程度按钮 ──
+document.querySelectorAll('.urgency-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.urgency-btn').forEach(b => {
+      b.classList.remove('active-critical', 'active-high', 'active-warning');
+    });
+    const val = btn.dataset.val;
+    btn.classList.add('active-' + val);
+    document.getElementById('urgency').value = val;
+    currentUrgency = val;
+  });
+});
+
+if (!scanId && !token) {
+  document.getElementById('msg').textContent = '无效的二维码，请重新扫描。';
+  document.getElementById('msg').className = 'msg err';
+  document.getElementById('submitBtn').disabled = true;
+} else {
+  const lookupEndpoint = scanId ? '/api/scan/' + scanId : '/api/qr/' + token;
+  fetch(API_BASE + lookupEndpoint).then(r => r.json()).then(data => {
+    if (data.token) ownerToken = data.token;
+    if (data.latitude && data.longitude) { carLat = data.latitude; carLon = data.longitude; }
+  }).catch(() => {});
+}
+
+// 留言按钮
+let selectedMsg = '';
+document.querySelectorAll('.msg-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.msg-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedMsg = btn.dataset.msg;
+  });
+});
+
+// 场景按钮
+document.querySelectorAll('.scenario-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.scenario-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    savedScenario = btn.dataset.val;
+    document.getElementById('scenario').value = btn.dataset.val;
+    document.getElementById("submitBtn").disabled = false;
+  });
+});
+
+function showTimeoutRetry() {
+  document.getElementById("loadingText").textContent = "发送超时，请重试";
+  document.getElementById("retryBtn").classList.add("show");
+}
+
+function backToForm() {
+  document.getElementById("waitingView").style.display = "none";
+  document.getElementById("confirmedView").style.display = "none";
+  document.getElementById("formView").style.display = "block";
+}
+
+function closeWindow() {
+  if (window.opener) window.close();
+  else window.location.href = location.origin + "/index.html";
+}
+
+let submitController = null;
+
+// ── 提示信息 ──
+function showErr(text) {
+  const el = document.getElementById("msg");
+  el.textContent = text;
+  el.className = "msg error";
+}
+
+function showLoading(text) {
+  document.getElementById("loadingText").textContent = text;
+  document.getElementById("loadingOverlay").classList.add("show");
+}
+
+function hideLoading() {
+  document.getElementById("loadingOverlay").classList.remove("show");
+}
+
+// ── 获取位置 ──
+function getLocation() {
+  if (!navigator.geolocation) {
+    showErr("浏览器不支持定位功能");
+    return;
+  }
+  document.getElementById("locHint").textContent = "正在获取位置...";
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      document.getElementById("userLat").value = pos.coords.latitude;
+      document.getElementById("userLon").value = pos.coords.longitude;
+      document.getElementById("locHint").textContent = "位置已获取 ✓";
+      document.getElementById("locHint").style.color = "#52c41a";
+    },
+    () => {
+      document.getElementById("locHint").textContent = "无法获取位置，请重试";
+      document.getElementById("locHint").style.color = "#ff4d4f";
+    }
+  );
+}
+
+document.getElementById("getLocBtn").addEventListener("click", getLocation);
+
+function doSubmit() {
+  const msg = document.getElementById("msg");
+  msg.textContent = "";
+  msg.className = "msg";
+  if (!selectedMsg) { showErr("请选择情况说明"); return; }
+  const carPlate = getCarPlate();
+  if (!carPlate || carPlate.length < 7) { showErr("请完整填写车牌号"); return; }
+  const userLat = parseFloat(document.getElementById("userLat").value) || 0;
+  const userLon = parseFloat(document.getElementById("userLon").value) || 0;
+  doNotify(savedScenario, currentUrgency, selectedMsg, userLat, userLon);
+}
+
+function doNotify(scenario, urgency, message, userLat, userLon) {
+  showLoading("发送中...");
+  submitController = new AbortController();
+  const timeout = setTimeout(() => {
+    submitController.abort();
+    hideLoading();
+    showTimeoutRetry();
+  }, 15000);
+  fetch(API_BASE + "/api/notify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token: ownerToken, scenario, message, urgency, user_lat: userLat, user_lon: userLon, car_plate: getCarPlate() }),
+    signal: submitController.signal,
+  }).then(resp => {
+    clearTimeout(timeout);
+    return resp.json();
+  }).then(data => {
+    hideLoading();
+    if (data.success) {
+      if (data.pending_id && !userLat) { currentPendingId = data.pending_id; showWaitingCountdown(data.pending_id); }
+      else showSuccessView();
+    } else { showErr("发送失败：" + (data.message || "请稍后重试")); }
+  }).catch(err => {
+    clearTimeout(timeout);
+    hideLoading();
+    if (err.name === "AbortError") showTimeoutRetry();
+    else showErr("网络错误，请稍后重试");
+  });
+}
+
+// ── 环形倒计时 ──
+let countdownInterval = null;
+let countdownSeconds = 30;
+const CIRCUMFERENCE = 326.73;
+
+function updateCountdownRing(seconds) {
+  const offset = CIRCUMFERENCE * (1 - seconds / 30);
+  const progress = document.getElementById("countdownProgress");
+  const timer = document.getElementById("countdownTimer");
+  if (progress) progress.style.strokeDashoffset = offset;
+  if (timer) timer.textContent = seconds;
+}
+
+function startLocalCountdown(fromSeconds, onComplete) {
+  countdownSeconds = fromSeconds;
+  updateCountdownRing(countdownSeconds);
+  if (countdownInterval) clearInterval(countdownInterval);
+  countdownInterval = setInterval(() => {
+    countdownSeconds--;
+    updateCountdownRing(countdownSeconds);
+    if (countdownSeconds <= 0) {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+      if (onComplete) onComplete();
+    }
+  }, 1000);
+}
+
+// ── 30 秒倒计时等待视图 ──
+let pendingId = null;
+
+function showWaitingCountdown(nid) {
+  pendingId = nid;
+  document.getElementById("formView").style.display = "none";
+  document.getElementById("confirmedView").style.display = "none";
+  document.getElementById("successView").style.display = "none";
+  document.getElementById("waitingView").style.display = "block";
+  document.getElementById("sendAfterCountdownBtn").style.display = "none";
+  document.getElementById("countdownWrapper").style.display = "flex";
+  document.getElementById("waitingIcon").textContent = "⏳";
+  document.getElementById("waitingTitle").textContent = "等待发送...";
+  document.getElementById("waitingDesc").textContent = "为防止恶意骚扰，需等待 30 秒后才能发送通知";
+  document.getElementById("waitingTip").textContent = "正在等待...";
+  updateCountdownRing(30);
+
+  // 开始本地倒计时，同时轮询服务端
+  startLocalCountdown(30, () => {
+    document.getElementById("sendAfterCountdownBtn").style.display = "block";
+    document.getElementById("countdownWrapper").style.display = "none";
+    document.getElementById("waitingIcon").textContent = "✅";
+    document.getElementById("waitingTitle").textContent = "可以发送了";
+    document.getElementById("waitingDesc").textContent = "已等待足够时间，现在可以发送通知";
+  });
+
+  pollPendingStatus();
+  if (countdownInterval) clearInterval(countdownInterval);
+  countdownInterval = setInterval(pollPendingStatus, 2000);
+}
+
+function pollPendingStatus() {
+  if (!pendingId) return;
+  fetch(API_BASE + "/api/status/" + pendingId)
+    .then(r => r.json())
+    .then(data => {
+      // 如果服务器有更准确的倒计时，用服务器的
+      if (data.remaining_seconds !== undefined && data.remaining_seconds > 0) {
+        countdownSeconds = data.remaining_seconds;
+        updateCountdownRing(data.remaining_seconds);
+        document.getElementById("waitingTip").textContent = "还剩 " + data.remaining_seconds + " 秒...";
+        if (data.remaining_seconds <= 0) {
+          if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+          document.getElementById("sendAfterCountdownBtn").style.display = "block";
+          document.getElementById("countdownWrapper").style.display = "none";
+        }
+        return;
+      }
+      if (data.status === "pending" || data.status === "waiting_confirmation") {
+        if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+        document.getElementById("waitingView").style.display = "block";
+        document.getElementById("countdownWrapper").style.display = "none";
+        document.getElementById("waitingIcon").textContent = "🔄";
+        document.getElementById("waitingTitle").textContent = "等待车主确认...";
+        document.getElementById("waitingDesc").textContent = "请稍候，车主确认后会通知您";
+        pollOwnerConfirmation();
+      } else if (data.status === "failed") {
+        if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+        document.getElementById("waitingView").style.display = "none";
+        document.getElementById("formView").style.display = "block";
+        showErr("通知发送失败，请稍后重试");
+      } else {
+        if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+        document.getElementById("waitingView").style.display = "none";
+        document.getElementById("formView").style.display = "block";
+      }
+    })
+    .catch(() => {});
+}
+
+function pollOwnerConfirmation() {
+  if (!pendingId) return;
+  const interval2 = setInterval(() => {
+    fetch(API_BASE + "/api/status/" + pendingId)
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === "confirmed") { clearInterval(interval2); showConfirmedView(data); }
+        else if (data.status === "rejected") { clearInterval(interval2); document.getElementById("waitingView").style.display = "none"; document.getElementById("formView").style.display = "block"; showErr("车主暂时无法挪车，请谅解"); }
+      }).catch(() => {});
+  }, 5000);
+}
+
+function showConfirmedView(data) {
+  if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+  document.getElementById("waitingView").style.display = "none";
+  document.getElementById("confirmedView").style.display = "block";
+  if (data.requester_lat && data.requester_lon) {
+    const link = document.getElementById("ownerMapLink");
+    link.href = "https://maps.apple.com/?q=&ll=" + data.requester_lat + "," + data.requester_lon;
+    document.getElementById("ownerLocationBox").style.display = "block";
+  }
+}
+
+function showSuccessView() {
+  if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+  document.getElementById("formView").style.display = "none";
+  document.getElementById("waitingView").style.display = "none";
+  document.getElementById("confirmedView").style.display = "none";
+  document.getElementById("successView").style.display = "block";
+  let remaining = 300;
+  const tip = document.getElementById("cooldownTip");
+  const backBtn = document.getElementById("backToFormBtn");
+  const submitBtn = document.getElementById("submitBtn");
+  tip.style.display = "block";
+  backBtn.style.display = "inline-block";
+  submitBtn.disabled = true;
+  const interval = setInterval(() => {
+    remaining -= 1;
+    if (remaining <= 0) { clearInterval(interval); tip.style.display = "none"; backBtn.style.display = "none"; submitBtn.disabled = false; }
+    else tip.textContent = "⏱️ " + Math.ceil(remaining / 60) + "分钟后可再次提交";
+  }, 1000);
+  backBtn.onclick = () => { document.getElementById("confirmedView").style.display = "none"; document.getElementById("formView").style.display = "block"; };
+}
+
+function doSendAfterCountdown() {
+  const userLat = parseFloat(document.getElementById("userLat").value) || 0;
+  const userLon = parseFloat(document.getElementById("userLon").value) || 0;
+  doNotify(savedScenario, currentUrgency, selectedMsg, userLat, userLon);
+}
+
+document.getElementById("notifyForm").addEventListener("submit", e => { e.preventDefault(); doSubmit(); });
+</script>
+</body>
+</html>
+

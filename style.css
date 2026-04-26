@@ -1,0 +1,799 @@
+/**
+ * 扫码挪车 - 移动端优化样式
+ */
+
+/* ── Reset ── */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Base ── */
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 16px;
+  padding-top: max(16px, env(safe-area-inset-top));
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+}
+
+/* ── Card 容器 ── */
+.card {
+  background: #fff;
+  border-radius: 24px;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.18);
+  width: 100%;
+  max-width: 480px;
+  padding: 24px 20px;
+  margin: auto;
+}
+
+/* ── 标题 ── */
+.card-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a1a2e;
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+.card-subtitle {
+  font-size: 13px;
+  color: #888;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+/* ── 表单通用 ── */
+.form-group {
+  margin-bottom: 18px;
+}
+
+label {
+  display: block;
+  font-size: 14px;
+  color: #444;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+input,
+textarea,
+select {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid #e8e8e8;
+  border-radius: 12px;
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.25s, box-shadow 0.25s;
+  font-family: inherit;
+  background: #fff;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+}
+
+input::placeholder {
+  color: #bbb;
+}
+
+.hint {
+  font-size: 12px;
+  color: #999;
+  margin-top: 6px;
+  line-height: 1.5;
+}
+
+/* ── 按钮 ── */
+.submit-btn,
+.gen-btn,
+.action-btn {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  letter-spacing: 0.5px;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.submit-btn:hover,
+.gen-btn:hover,
+.action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+}
+
+.submit-btn:active,
+.gen-btn:active,
+.action-btn:active {
+  transform: translateY(0);
+}
+
+.submit-btn:disabled,
+.gen-btn:disabled {
+  background: #ccc;
+  transform: none;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* ── 次要按钮 ── */
+.btn-secondary {
+  background: #f5f5f5;
+  color: #666;
+  box-shadow: none;
+}
+
+.btn-secondary:hover {
+  background: #eee;
+  box-shadow: none;
+}
+
+/* ── 位置按钮 ── */
+.location-btn {
+  width: 100%;
+  padding: 14px;
+  border: 2px solid #667eea;
+  border-radius: 12px;
+  background: #fff;
+  color: #667eea;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 50px;
+}
+
+.location-btn:hover {
+  background: #667eea;
+  color: #fff;
+}
+
+.location-btn.success {
+  background: #28a745;
+  border-color: #28a745;
+  color: #fff;
+}
+
+.location-btn.success::before {
+  content: '✅ ';
+}
+
+/* ── 快捷留言按钮 ── */
+.msg-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.msg-btn {
+  padding: 12px 8px;
+  border: 2px solid #e8e8e8;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 14px;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 46px;
+}
+
+.msg-btn:hover {
+  border-color: #667eea;
+  color: #667eea;
+}
+
+.msg-btn.active {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  border-color: transparent;
+}
+
+/* ── 场景选择 ── */
+.scenario-btns {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.scenario-btn {
+  padding: 12px 4px;
+  border: 2px solid #e8e8e8;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 13px;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-height: 48px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.scenario-btn:hover {
+  border-color: #667eea;
+}
+
+.scenario-btn.active {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  border-color: transparent;
+}
+
+.scenario-btn .emoji {
+  font-size: 20px;
+}
+
+/* ── 车牌输入 ── */
+.plate-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.plate-row select {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 8px;
+  border: 2px solid #e8e8e8;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 600;
+  background: #fff;
+  color: #333;
+  cursor: pointer;
+  text-align: center;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.plate-row select:focus {
+  border-color: #667eea;
+}
+
+.plate-row .plate-dots {
+  color: #667eea;
+  font-size: 18px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+/* ── 隐私提示 ── */
+.privacy-note {
+  background: #f8f9fa;
+  border-radius: 10px;
+  padding: 12px;
+  margin-top: 16px;
+  font-size: 12px;
+  color: #888;
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* ── Loading ── */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.95);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s, visibility 0.3s;
+}
+
+.loading-overlay.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #e8e8e8;
+  border-top-color: #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loading-text {
+  margin-top: 16px;
+  font-size: 15px;
+  color: #666;
+}
+
+.retry-btn {
+  margin-top: 16px;
+  padding: 12px 24px;
+  background: #667eea;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ── 成功/等待视图 ── */
+.success-view,
+.waiting-view,
+.result-view,
+#waitingView,
+#successView,
+#confirmedView {
+  display: none;
+}
+
+.show-view .form-view {
+  display: none;
+}
+
+.show-view .success-view,
+.show-view .waiting-view,
+.show-view .result-view {
+  display: block;
+}
+
+/* ── 结果卡片 ── */
+.result-card {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.result-emoji {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.result-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin-bottom: 8px;
+}
+
+.result-message {
+  font-size: 14px;
+  color: #666;
+  line-height: 1.6;
+  margin-bottom: 20px;
+}
+
+/* ── 等待视图 ── */
+.waiting-content {
+  text-align: center;
+}
+
+.waiting-emoji {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.waiting-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.waiting-countdown {
+  font-size: 36px;
+  font-weight: 700;
+  color: #667eea;
+  margin: 16px 0;
+}
+
+.waiting-hint {
+  font-size: 13px;
+  color: #888;
+}
+
+/* ── 确认页 ── */
+.info {
+  background: #f8f9fa;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.info-item:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  color: #888;
+  font-size: 14px;
+}
+
+.info-value {
+  color: #333;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+/* ── 操作按钮组 ── */
+.btn-group {
+  display: flex;
+  gap: 12px;
+}
+
+.btn {
+  flex: 1;
+  padding: 16px;
+  border: none;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  min-height: 52px;
+}
+
+.btn-confirm {
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: #fff;
+}
+
+.btn-confirm:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+}
+
+.btn-confirm:disabled {
+  background: #ccc;
+  transform: none;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.btn-reject {
+  background: #f5f5f5;
+  color: #666;
+}
+
+.btn-reject:hover {
+  background: #eee;
+}
+
+/* ── 状态框 ── */
+.status-box {
+  padding: 14px;
+  border-radius: 12px;
+  margin-top: 16px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.status-success {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-error {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+/* ── 车主位置信息 ── */
+.owner-location {
+  background: #e8f5e9;
+  border: 1px solid #c8e6c9;
+  border-radius: 12px;
+  padding: 14px;
+  margin-top: 16px;
+  text-align: left;
+  font-size: 14px;
+  color: #2e7d32;
+}
+
+.owner-location a {
+  color: #2e7d32;
+  text-decoration: underline;
+}
+
+/* ── 二维码 ── */
+.qr-container {
+  text-align: center;
+  padding: 20px 0;
+}
+
+.qr-container img {
+  max-width: 200px;
+  border-radius: 12px;
+}
+
+.token-display {
+  background: #f5f5f5;
+  border-radius: 10px;
+  padding: 14px;
+  margin: 16px 0;
+  font-family: monospace;
+  font-size: 14px;
+  word-break: break-all;
+}
+
+/* ── 响应式 ── */
+@media (max-width: 480px) {
+  body {
+    padding: 12px;
+  }
+  
+  .card {
+    padding: 20px 16px;
+    border-radius: 20px;
+  }
+  
+  .card-title {
+    font-size: 20px;
+  }
+  
+  .scenario-btns {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .msg-btns {
+    grid-template-columns: 1fr;
+  }
+  
+  .btn-group {
+    flex-direction: column;
+  }
+}
+
+/* ── 安全区域适配 ── */
+@supports (padding: env(safe-area-inset-top)) {
+  .card {
+    padding-left: max(20px, env(safe-area-inset-left));
+    padding-right: max(20px, env(safe-area-inset-right));
+  }
+}
+
+/* ── 隐藏默认视图 ── */
+#formView,
+#resultView,
+#qrView {
+  display: block;
+}
+
+#waitingView,
+#confirmedView,
+#successView {
+  display: none;
+}
+
+/* ── Hero ── */
+.hero { text-align: center; margin-bottom: 22px; }
+.hero-icon { font-size: 48px; margin-bottom: 8px; }
+.hero h1 { font-size: 20px; font-weight: 700; color: #1a1a2e; margin-bottom: 4px; }
+
+/* ── 消息提示 ── */
+.msg { font-size: 13px; padding: 10px 12px; border-radius: 8px; margin-top: 10px; text-align: center; line-height: 1.5; }
+.msg.err { background: #fee; color: #c0392b; }
+.msg.ok { background: #efe; color: #27ae60; }
+
+/* ── Subtitle ── */
+.subtitle { font-size: 13px; color: #888; }
+
+/* ── 场景选择（grid） ── */
+.scenarios { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 18px; }
+
+/* ── 场景按钮 ── */
+.scenario-btn { display: flex; align-items: center; justify-content: center; gap: 4px; padding: 10px 4px; border: 2px solid #e8e8e8; border-radius: 12px; background: #fff; cursor: pointer; font-size: 12px; font-weight: 600; color: #555; transition: all 0.22s; min-height: 44px; }
+.scenario-btn .emoji { font-size: 15px; }
+.scenario-btn:hover { border-color: #667eea; color: #667eea; background: rgba(102,126,234,0.05); }
+.scenario-btn.active { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border-color: transparent; box-shadow: 0 4px 15px rgba(102,126,234,0.35); }
+
+/* ── 紧急程度选择 ── */
+.urgency-group { display: flex; gap: 8px; margin-bottom: 18px; }
+.urgency-btn { flex: 1; padding: 10px 4px; border: 2px solid #e8e8e8; border-radius: 12px; background: #fff; cursor: pointer; font-size: 13px; font-weight: 600; color: #555; transition: all 0.2s; text-align: center; }
+.urgency-btn:hover { border-color: #667eea; color: #667eea; }
+.urgency-btn.active-critical { background: #dc3545; border-color: #dc3545; color: #fff; }
+.urgency-btn.active-high { background: #f97316; border-color: #f97316; color: #fff; }
+.urgency-btn.active-warning { background: #28a745; border-color: #28a745; color: #fff; }
+.urgency-btn input[type="radio"] { display: none; }
+
+/* ── 留言快捷按钮 ── */
+.msg-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.msg-btn { padding: 10px 8px; border: 2px solid #e8e8e8; border-radius: 10px; background: #fff; font-size: 13px; cursor: pointer; transition: all 0.2s; }
+.msg-btn:hover { border-color: #667eea; color: #667eea; }
+.msg-btn.active { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; border-color: transparent; }
+
+/* ── 车牌输入键盘组件 ── */
+.plate-keyboard-wrapper { position: relative; }
+
+/* 新能源切换 */
+.ev-toggle-row { display: flex; align-items: center; justify-content: flex-end; gap: 6px; margin-bottom: 8px; font-size: 12px; color: #888; }
+.ev-toggle-row label { cursor: pointer; display: flex; align-items: center; gap: 4px; }
+.ev-toggle-row input[type="checkbox"] { width: auto; }
+
+/* 车牌格子行 */
+.plate-grid { display: flex; align-items: center; gap: 5px; justify-content: center; margin-bottom: 10px; }
+.plate-char-cell { width: 36px; height: 44px; border: 2px solid #d0c8ff; border-radius: 10px; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 700; color: #333; cursor: pointer; transition: all 0.2s; user-select: none; position: relative; }
+.plate-char-cell:hover { border-color: #667eea; background: #f8f7ff; }
+.plate-char-cell.active { border-color: #667eea; background: #f0eeff; box-shadow: 0 0 0 3px rgba(102,126,234,0.2); }
+.plate-char-cell.filled { color: #333; }
+.plate-char-cell.empty { color: #ccc; }
+.plate-dot-sep { font-size: 22px; font-weight: 700; color: #667eea; line-height: 1; margin: 0 1px; }
+.plate-char-cell.province-cell { width: 42px; }
+.plate-char-cell.letter-cell { width: 38px; }
+.plate-char-cell.ev-cell { width: 42px; border-style: dashed; color: #ccc; }
+
+/* 活跃格闪烁光标 */
+.plate-char-cell.active::after { content: ''; position: absolute; width: 2px; height: 22px; background: #667eea; border-radius: 1px; animation: blink-cursor 1s infinite; }
+@keyframes blink-cursor { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+/* 虚拟键盘 */
+.virt-keyboard { background: #f0f0f7; border-radius: 16px 16px 0 0; padding: 10px 8px 8px; display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 999; box-shadow: 0 -4px 20px rgba(0,0,0,0.15); max-height: 55vh; overflow-y: auto; }
+.virt-keyboard.show { display: block; }
+
+/* 键盘切换标签 */
+.kb-tabs { display: flex; gap: 6px; justify-content: center; margin-bottom: 8px; }
+.kb-tab { padding: 5px 14px; border-radius: 20px; border: none; background: #e0ddf0; font-size: 12px; font-weight: 600; color: #666; cursor: pointer; transition: all 0.2s; }
+.kb-tab.active { background: #667eea; color: #fff; }
+
+/* 键盘行 & 键 */
+.kb-row { display: flex; gap: 4px; justify-content: center; margin-bottom: 5px; flex-wrap: wrap; }
+.kb-key { min-width: 28px; height: 42px; border-radius: 8px; border: none; background: #fff; font-size: 16px; font-weight: 600; color: #333; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.12); user-select: none; -webkit-tap-highlight-color: transparent; padding: 0 5px; flex: 1; max-width: 40px; }
+.kb-key:active { background: #d0d0d8; transform: scale(0.95); }
+.kb-key.province-key { max-width: 38px; height: 40px; font-size: 15px; }
+.kb-key.letter-key { max-width: 36px; }
+.kb-key.digit-key { max-width: 38px; }
+.kb-key.special { background: #d8d8e8; font-size: 13px; color: #555; flex: 0 0 auto; min-width: 50px; max-width: 60px; }
+.kb-key.delete-key { background: #ffebeb; color: #e74c3c; flex: 0 0 auto; min-width: 56px; max-width: 70px; font-size: 13px; }
+.kb-key.confirm-key { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; flex: 0 0 auto; min-width: 56px; max-width: 70px; font-size: 13px; box-shadow: 0 2px 8px rgba(102,126,234,0.3); }
+
+/* 冷却提示 */
+.cooldown-tip { color: #e74c3c; font-size: 13px; margin-top: 12px; }
+
+/* 环形倒计时 */
+.countdown-wrapper { display: flex; flex-direction: column; align-items: center; margin: 16px 0; }
+.countdown-ring { width: 120px; height: 120px; margin-bottom: 12px; position: relative; }
+.countdown-ring svg { transform: rotate(-90deg); width: 120px; height: 120px; }
+.countdown-ring-bg { fill: none; stroke: #e8e8e8; stroke-width: 8; }
+.countdown-ring-progress { fill: none; stroke: #667eea; stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
+.countdown-ring-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 38px; font-weight: 800; color: #667eea; font-variant-numeric: tabular-nums; }
+.countdown-label { font-size: 13px; color: #aaa; }
+
+/* 等待/成功视图 */
+.waiting-view { text-align: center; }
+.waiting-view .icon { font-size: 56px; margin-bottom: 12px; }
+.waiting-view h2 { font-size: 20px; font-weight: 700; color: #333; margin-bottom: 8px; }
+.waiting-view p { font-size: 14px; color: #888; line-height: 1.6; margin-bottom: 4px; }
+.success-view { text-align: center; }
+.success-view .icon { font-size: 56px; margin-bottom: 12px; }
+.success-view h2 { font-size: 20px; font-weight: 700; color: #333; margin-bottom: 8px; }
+.success-view p { font-size: 14px; color: #888; line-height: 1.6; }
+
+/* ── 地区限制提示 ── */
+.region-block { display: none; text-align: center; padding: 40px 20px; }
+.region-block.show { display: block; }
+.region-block .icon { font-size: 64px; margin-bottom: 16px; }
+.region-block h2 { font-size: 22px; color: #333; margin-bottom: 10px; }
+.region-block p { color: #888; font-size: 14px; line-height: 1.6; }
+
+
+/* ── 返回按钮 ── */
+.back-btn { display: inline-block; width: auto; padding: 10px 24px; background: #f5f5f5; color: #666; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.back-btn:hover { background: #eee; }
+
+/* ── 成功图标 ── */
+.check-icon { font-size: 56px; margin-bottom: 12px; }
+
+/* ── 主色调强调 ── */
+.plate-label { font-size: 14px; color: #444; font-weight: 600; margin-bottom: 8px; }
+
+/* ── 移动端适配 ── */
+@media (max-width: 380px) {
+  .plate-char-cell { width: 32px; height: 40px; font-size: 16px; }
+  .plate-char-cell.province-cell { width: 38px; }
+  .plate-char-cell.letter-cell { width: 36px; }
+  .plate-char-cell.ev-cell { width: 38px; }
+  .kb-key { min-width: 24px; height: 38px; font-size: 14px; max-width: 34px; }
+  .countdown-ring { width: 100px; height: 100px; }
+  .countdown-ring svg { width: 100px; height: 100px; }
+  .countdown-ring-text { font-size: 32px; }
+}
+
+/* ── 键盘弹出时防止页面滚动 ── */
+body.keyboard-open { overflow: hidden; position: relative; }
+
+/* ── 注册结果页 Token 展示（修复缺失样式） ── */
+.token-box {
+  background: #f0f0f7;
+  border-radius: 12px;
+  padding: 16px;
+  margin: 16px 0;
+}
+.token-box .label {
+  font-size: 12px;
+  color: #888;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.token-box .token {
+  font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+  font-size: 15px;
+  font-weight: 600;
+  color: #333;
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+/* ── 操作按钮组（注册结果页） ── */
+.action-btns {
+  display: flex;
+  gap: 10px;
+  margin: 16px 0;
+}
+.action-btns .action-btn {
+  flex: 1;
+  padding: 14px 12px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.action-btns .action-btn.secondary {
+  background: #f0f0f7;
+  color: #666;
+}
+.action-btns .action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35);
+}
+

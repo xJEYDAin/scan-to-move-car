@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>挪车确认</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .card { text-align: center; padding: 40px 36px; max-width: 420px; }
+  .icon { font-size: 80px; margin-bottom: 20px; }
+  h1 { margin-bottom: 16px; }
+  p { margin-bottom: 20px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div id="loading" class="loading-overlay">
+    <div class="spinner"></div>
+    <div class="loading-text">加载中...</div>
+  </div>
+
+  <div id="content" style="display:none;">
+    <div class="icon">🚗</div>
+    <h1>有人需要您挪车</h1>
+    <p>请确认是否能够挪车</p>
+
+    <div class="info">
+      <div class="info-item">
+        <span class="info-label">被挡车牌</span>
+        <span class="info-value" id="carPlate" style="font-weight:700;color:#667eea;">-</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">场景</span>
+        <span class="info-value" id="scenario">-</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">留言</span>
+        <span class="info-value" id="message">-</span>
+      </div>
+    </div>
+
+    <div id="statusBox" class="status-box" style="display:none;"></div>
+
+    <div class="btn-group" id="btnGroup">
+      <button class="btn btn-confirm" id="confirmBtn" onclick="doConfirm()">✅ 确认挪车</button>
+      <button class="btn btn-reject" id="rejectBtn" onclick="doReject()">❌ 拒绝</button>
+    </div>
+  </div>
+
+  <div id="done" style="display:none;">
+    <div class="icon" id="doneIcon">✅</div>
+    <h1 id="doneTitle">操作完成</h1>
+    <p id="doneMsg">感谢您的配合</p>
+  </div>
+
+  <div id="error" style="display:none;">
+    <div class="icon">❌</div>
+    <h1>链接已失效</h1>
+    <p>此确认链接已过期或不存在</p>
+  </div>
+</div>
+
+<script src="common.js"></script>
+<script>
+// ── 启动时从 /api/config 动态获取 API 地址 ──
+let API_BASE = '';
+
+async function init() {
+  try {
+    const cfg = await fetch('/api/config');
+    if (cfg.ok) {
+      const json = await cfg.json();
+      API_BASE = json.apiUrl || location.origin;
+    } else {
+      API_BASE = location.origin;
+    }
+  } catch {
+    API_BASE = location.origin;
+  }
+  bootstrap();
+}
+
+function bootstrap() {
+  const params = new URLSearchParams(window.location.search);
+  const key = params.get('key');
+  if (!key) {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('error').style.display = 'block';
+  } else {
+    loadConfirmPage(key);
+  }
+}
+
+init();
+
+async function loadConfirmPage(key) {
+  try {
+    const resp = await fetch(API_BASE + '/api/status/key/' + encodeURIComponent(key));
+    if (!resp.ok) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error').style.display = 'block';
+      return;
+    }
+    const data = await resp.json();
+    if (data.status === 'not_found') {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error').style.display = 'block';
+      return;
+    }
+    document.getElementById('carPlate').textContent = data.car_plate || '-';
+    document.getElementById('scenario').textContent = data.scenario || '-';
+    document.getElementById('message').textContent = data.message || '-';
+    if (data.status === 'confirmed') {
+      showDone('✅', '已确认', '感谢您的配合');
+    } else if (data.status === 'rejected') {
+      showDone('❌', '已拒绝', '对方已收到拒绝通知');
+    } else {
+      document.getElementById('content').style.display = 'block';
+      document.getElementById('loading').style.display = 'none';
+    }
+  } catch (e) {
+    console.error(e);
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('error').style.display = 'block';
+  }
+}
+
+async function doConfirm() {
+  const btn = document.getElementById('confirmBtn');
+  btn.disabled = true;
+  btn.textContent = '处理中...';
+  try {
+    const resp = await fetch(API_BASE + '/api/confirm/' + encodeURIComponent(key), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      showDone('✅', '确认成功', '已通知对方，请尽快挪车');
+    } else {
+      showError(data.message || '操作失败');
+      btn.disabled = false;
+      btn.textContent = '✅ 确认挪车';
+    }
+  } catch (e) {
+    showError('操作失败，请稍后重试');
+    btn.disabled = false;
+    btn.textContent = '✅ 确认挪车';
+  }
+}
+
+async function doReject() {
+  if (!confirm('确定要拒绝吗？对方将收到拒绝通知。')) return;
+  const btn = document.getElementById('rejectBtn');
+  btn.disabled = true;
+  btn.textContent = '处理中...';
+  try {
+    const resp = await fetch(API_BASE + '/api/reject/' + encodeURIComponent(key), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      showDone('❌', '已拒绝', '对方已收到拒绝通知');
+    } else {
+      showError(data.message || '操作失败');
+      btn.disabled = false;
+      btn.textContent = '❌ 拒绝';
+    }
+  } catch (e) {
+    showError('操作失败');
+    btn.disabled = false;
+    btn.textContent = '❌ 拒绝';
+  }
+}
+
+function showError(msg) {
+  const statusBox = document.getElementById('statusBox');
+  statusBox.textContent = msg;
+  statusBox.className = 'status-box status-error';
+  statusBox.style.display = 'block';
+}
+
+function showDone(icon, title, msg) {
+  document.getElementById('content').style.display = 'none';
+  document.getElementById('done').style.display = 'block';
+  document.getElementById('doneIcon').textContent = icon;
+  document.getElementById('doneTitle').textContent = title;
+  document.getElementById('doneMsg').textContent = msg;
+}
+</script>
+</body>
+</html>
+
